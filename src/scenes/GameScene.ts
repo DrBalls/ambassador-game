@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
+import { VerbSystem } from '../systems/VerbSystem';
 
 /**
  * GameScene - Main gameplay container
@@ -8,6 +9,8 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
  * verb interface, inventory, and player interactions.
  */
 export class GameScene extends Phaser.Scene {
+  private verbSystem!: VerbSystem;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -16,24 +19,24 @@ export class GameScene extends Phaser.Scene {
     // Display placeholder background (320x200)
     this.add.image(0, 0, 'bg-placeholder').setOrigin(0, 0);
 
-    // Display placeholder character sprite in center
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'character');
+    // Display placeholder character sprite in center of viewport area (above verb bar)
+    // Viewport is 320x176 (leaving 24px for verb bar at bottom)
+    this.add.image(GAME_WIDTH / 2, (GAME_HEIGHT - 24) / 2, 'character');
 
-    // Display UI button in corner as test
-    this.add.image(16, 16, 'ui-button');
+    // Initialize the SCUMM-style verb bar
+    this.verbSystem = new VerbSystem(this);
 
-    // Label text to show assets loaded
-    const text = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT - 20,
-      'Assets Loaded',
-      {
-        fontSize: '8px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-      }
-    );
-    text.setOrigin(0.5, 0.5);
+    // Listen for verb selection events (useful for debugging)
+    this.events.on('verb:selected', (verb: string) => {
+      console.log(`Verb selected: ${verb}`);
+    });
+  }
+
+  /**
+   * Get the verb system for external access
+   */
+  getVerbSystem(): VerbSystem {
+    return this.verbSystem;
   }
 
   update(_time: number, _delta: number): void {
