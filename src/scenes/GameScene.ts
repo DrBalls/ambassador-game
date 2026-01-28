@@ -4,6 +4,7 @@ import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { ItemDefinition } from '../data/items';
+import { RoomData, getRoom } from '../data/rooms';
 
 /**
  * GameScene - Main gameplay container
@@ -16,14 +17,16 @@ export class GameScene extends Phaser.Scene {
   private sentenceLineSystem!: SentenceLineSystem;
   private inventorySystem!: InventorySystem;
   private feedbackText!: Phaser.GameObjects.Text;
+  private currentRoom: RoomData | null = null;
+  private roomBackground: Phaser.GameObjects.Image | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
   create(): void {
-    // Display placeholder background (320x200)
-    this.add.image(0, 0, 'bg-placeholder').setOrigin(0, 0);
+    // Load the test room (future: room ID will come from game state)
+    this.loadRoom('test-room');
 
     // Display placeholder character sprite in center of viewport area (above UI)
     // Viewport is 320x120 (leaving 80px for inventory + sentence line + verb bar at bottom)
@@ -165,6 +168,40 @@ export class GameScene extends Phaser.Scene {
         this.feedbackText.setVisible(false);
       },
     });
+  }
+
+  /**
+   * Load a room by ID — sets background and stores room data.
+   * Clears any previous room background before rendering the new one.
+   */
+  loadRoom(roomId: string): void {
+    const room = getRoom(roomId);
+    if (!room) {
+      console.warn(`Room not found: ${roomId}`);
+      return;
+    }
+
+    // Clear previous background
+    if (this.roomBackground) {
+      this.roomBackground.destroy();
+      this.roomBackground = null;
+    }
+
+    this.currentRoom = room;
+
+    // Render background at top-left of viewport (320x120 area)
+    this.roomBackground = this.add.image(0, 0, room.background).setOrigin(0, 0);
+    // Ensure background renders behind everything else
+    this.roomBackground.setDepth(-1);
+
+    console.log(`Loaded room: ${room.name} (${room.id})`);
+  }
+
+  /**
+   * Get the current room data
+   */
+  getCurrentRoom(): RoomData | null {
+    return this.currentRoom;
   }
 
   update(_time: number, _delta: number): void {

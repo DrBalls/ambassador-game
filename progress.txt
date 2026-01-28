@@ -23,6 +23,8 @@ Started: 2026-01-28
 - Combination keys: "sourceId+targetId" format, register both orderings for bidirectional support
 - Room data: src/data/rooms/ directory with types.ts (interfaces), per-room data files, and index.ts barrel (registry + getRoom())
 - Room registry: ROOMS record in src/data/rooms/index.ts — add new rooms here when created
+- Room loading: GameScene.loadRoom(roomId) clears previous background and renders new room's background at depth -1
+- Room accessor: GameScene.getCurrentRoom() returns current RoomData or null
 - Hotspot bounds: Use 'rect' (x,y,width,height) or 'polygon' (points array) for collision shapes
 - Hotspot responses: Per-verb responses (look/use/take/talk/walk) — string for text, HotspotCallback for actions
 
@@ -237,4 +239,22 @@ Started: 2026-01-28
   - Condition fields on hotspots/exits/characters allow flag-gated content (e.g., show hotspot only after event)
   - Barrel exports from index.ts re-export types so consumers import from 'data/rooms' directly
   - Room walk areas are Point[] polygons; the viewport area is 320x120 (Y: 0–120)
+---
+
+## 2026-01-28 - US-010: Render Room Background
+- What was implemented:
+  - Added `loadRoom(roomId)` public method on GameScene
+  - Method looks up RoomData via `getRoom()` from room registry
+  - Background image rendered at (0,0) with `setOrigin(0,0)` and `setDepth(-1)`
+  - Previous background destroyed on room change (prevents stacking)
+  - Added `getCurrentRoom()` accessor for external state queries
+  - `currentRoom` and `roomBackground` tracked as class members
+  - GameScene.create() now calls `loadRoom('test-room')` instead of hardcoded background
+- Files changed:
+  - src/scenes/GameScene.ts (added room loading, background rendering, imports from data/rooms)
+- **Learnings for future iterations:**
+  - `setDepth(-1)` ensures background renders behind all other game objects (UI, hotspots, characters)
+  - `loadRoom()` destroys old background before creating new one — important for room transitions
+  - Room background uses the `background` key from RoomData which maps to a preloaded asset
+  - Future room transitions (US-012) will need to preload new room backgrounds if not already cached
 ---
