@@ -458,7 +458,7 @@
         "Verify in browser: see pattern, input matching sequence, puzzle succeeds"
       ],
       "priority": 26,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

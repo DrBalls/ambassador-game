@@ -14,7 +14,7 @@ import { Verb } from '../systems/VerbSystem';
 import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
 import { NPCDefinition, getNPCDefinition } from '../data/npcs';
-import { PatternDisplay } from '../systems/PatternPuzzle';
+import { PatternDisplay, PatternInput } from '../systems/PatternPuzzle';
 
 /** Height of the gameplay viewport area (above UI panels) */
 const VIEWPORT_HEIGHT = 120;
@@ -223,6 +223,11 @@ export class GameScene extends Phaser.Scene {
       const display = new PatternDisplay(this, indices);
       display.play();
       return display;
+    };
+    // Test helper: window.testPatternInput([0,2,4]) creates a PatternInput puzzle
+    (window as unknown as { testPatternInput: (indices: number[]) => PatternInput }).testPatternInput = (indices: number[]) => {
+      const input = new PatternInput(this, indices);
+      return input;
     };
   }
 

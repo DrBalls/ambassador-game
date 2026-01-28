@@ -59,6 +59,14 @@ Started: 2026-01-28
 - PatternDisplay events: 'pattern:displayComplete' emitted on scene.events when full sequence finishes playing
 - PatternDisplay depth: container at depth 150 (below dialogue at 200, above gameplay)
 - Console test helper: window.testPattern([0,2,4]) creates and plays a PatternDisplay in GameScene
+- PatternInput: class in src/systems/PatternPuzzle.ts — 7 clickable buttons, player sequence display, submit/backspace, success/fail feedback
+- PatternInput constructor: new PatternInput(scene, targetIndices[], onComplete?) — targetIndices are base-7 digits (0-6)
+- PatternInput buttons: 7 sacred element buttons (28x28) with hover highlights using element's colorRGB
+- PatternInput input slots: row of 24x24 slots above buttons showing player's current sequence
+- PatternInput controls: Backspace button + keyboard Backspace key removes last input; Submit button validates sequence
+- PatternInput validation: element-by-element comparison against target; success → green flash + 'pattern:inputSuccess'; fail → red flash + 'pattern:inputFail' + retry
+- PatternInput depth: container at depth 150 (same as PatternDisplay)
+- Console test helper: window.testPatternInput([0,2,4]) creates a PatternInput in GameScene
 
 ---
 
@@ -751,4 +759,31 @@ Started: 2026-01-28
   - Oscillator with gain envelope (ramp up 20ms → sustain → ramp down) avoids click artifacts
   - PatternDisplay is self-contained — owns its own AudioContext, container, sprites, and cleanup
   - window.testPattern() helper allows easy console testing without additional setup
+---
+
+## 2026-01-28 - US-026: Implement Pattern Input
+- What was implemented:
+  - Added PatternInput class to src/systems/PatternPuzzle.ts
+  - 7 clickable sacred element buttons (28x28) with hover highlighting using each element's color
+  - Player sequence display: row of 24x24 input slots above buttons showing current input
+  - Click button adds element to player sequence with tone playback (Web Audio API)
+  - Backspace button (UI) and keyboard Backspace key remove the last input element
+  - Submit button validates player's sequence against target pattern element-by-element
+  - Success: green flash overlay (0.3 opacity, 600ms fade), "Correct!" label, emits 'pattern:inputSuccess' event
+  - Failure: red flash overlay, "Incorrect! Try again..." label, sequence cleared, input re-activated, emits 'pattern:inputFail' event
+  - Incomplete submission shows "Need N elements!" label feedback for 1 second
+  - Optional onComplete callback fires after success animation
+  - Added window.testPatternInput([0,2,4]) console helper in GameScene
+  - Browser verified: correct sequence succeeds with green flash, wrong sequence shows red flash and allows retry
+- Files changed:
+  - src/systems/PatternPuzzle.ts (added PatternInput class — ~300 lines)
+  - src/scenes/GameScene.ts (imported PatternInput, added window.testPatternInput helper)
+  - prd.json (US-026 passes: true)
+- **Learnings for future iterations:**
+  - PatternInput follows the same architecture as PatternDisplay — container-based, self-contained audio, depth 150
+  - Flash overlay uses a Rectangle with alpha tween (from: 0.3, to: 0) for colored flash effect
+  - Keyboard Backspace key via scene.input.keyboard.addKey() — must removeAllListeners + removeKey in destroy()
+  - Input slot sprites use setDisplaySize() for consistent sizing regardless of sprite sheet frame dimensions
+  - isActive flag gates all input handlers — set false during submit animation, re-set true on fail for retry
+  - Button hover effects use element's colorRGB at full intensity (hover) vs 50% dimmed (normal) for visual feedback
 ---
