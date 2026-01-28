@@ -368,6 +368,10 @@ Started: 2026-01-28
 - NPC lifecycle: GameScene.createNPCs() on room load, clearNPCs() on room change — follows same pattern as hotspots/exits
 - NPC sprites: BootScene iterates NPC_DEFINITIONS to preload all sprite sheets dynamically
 - NPC anim keys: `${npcId}-idle` pattern prevents animation key collisions between NPCs
+- Dialogue data: src/data/dialogue/ directory with types.ts (interfaces), per-dialogue data files, and index.ts barrel (registry + getDialogueTree())
+- Dialogue registry: DIALOGUE_TREES record in src/data/dialogue/index.ts — add new dialogue trees here when created
+- DialogueNode progression: `next` (linear) XOR `responses` (branching) XOR end (neither present)
+- DialogueAction types: 'setFlag', 'giveItem', 'takeItem', 'startQuest' — covers adventure game state changes
 
 ---
 
@@ -455,4 +459,27 @@ Started: 2026-01-28
   - NPC responses use the same HotspotResponses type as room hotspots for consistency
   - TALK verb on NPC emits 'hotspot:action' with action='startDialogue' — will connect to DialogueSystem in US-018
   - clearNPCs() must be called alongside clearHotspots() and clearExitZones() on room change
+---
+
+## 2026-01-28 - US-017: Create Dialogue Data Format
+- What was implemented:
+  - Created src/data/dialogue/types.ts with DialogueNode, DialogueResponse, DialogueTree, and DialogueAction interfaces
+  - DialogueNode supports: id, speaker, text, responses (branching), next (linear), condition (flag-gated), action (state changes)
+  - DialogueResponse has: text, nextNodeId, condition (flag-gated visibility)
+  - DialogueAction supports 4 types: setFlag, giveItem, takeItem, startQuest
+  - Created src/data/dialogue/test-dialogue.ts with Bubble's greeting dialogue tree (14 nodes, multiple branches)
+  - Sample dialogue demonstrates: branching choices, conditional responses (found_probe_marks flag), dialogue actions (setFlag), linear flow, and terminal nodes
+  - Created src/data/dialogue/index.ts barrel with DIALOGUE_TREES registry and getDialogueTree() lookup
+- Files changed:
+  - src/data/dialogue/types.ts (new - dialogue type definitions)
+  - src/data/dialogue/test-dialogue.ts (new - Bubble greeting dialogue tree)
+  - src/data/dialogue/index.ts (new - barrel exports, registry, lookup function)
+  - prd.json (US-017 passes: true)
+- **Learnings for future iterations:**
+  - Dialogue data follows same registry pattern as rooms and items: types.ts + data files + index.ts barrel
+  - DialogueNode uses mutually exclusive progression: `next` (linear) XOR `responses` (branching) XOR end (neither)
+  - DIALOGUE_TREES registry uses `[tree.id]: tree` pattern for dynamic key mapping from data
+  - NPC definitions already reference dialogueId in talk response: { action: 'startDialogue', data: { dialogueId: 'bubble-greeting' } }
+  - DialogueAction.type enum covers the 4 state-change operations needed for adventure game progression
+  - Conditional responses enable flag-gated dialogue branches without code changes
 ---
