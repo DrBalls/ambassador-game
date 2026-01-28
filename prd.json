@@ -340,7 +340,7 @@
         "Verify in browser: reach choice node, see options, click one, dialogue continues correctly"
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

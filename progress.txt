@@ -379,6 +379,9 @@ Started: 2026-01-28
 - Dialogue registry: DIALOGUE_TREES record in src/data/dialogue/index.ts — add new dialogue trees here when created
 - DialogueNode progression: `next` (linear) XOR `responses` (branching) XOR end (neither present)
 - DialogueAction types: 'setFlag', 'giveItem', 'takeItem', 'startQuest' — covers adventure game state changes
+- Dialogue choices: showChoices() renders up to 4 clickable text options; clearChoices() destroys them on selection or dialogue end
+- Dialogue conditions: DialogueResponse.condition checks dialogueFlags Map (temporary until GameState US-021); no condition = always visible
+- Dialogue choice interaction: isShowingChoices flag prevents background clicks from advancing; choices handle their own pointerdown events
 
 ---
 
@@ -525,4 +528,27 @@ Started: 2026-01-28
   - Dialogue at choice nodes (responses array) currently ends — US-019 will handle rendering choices
   - 'dialogue:action' event carries DialogueAction for GameState to process — GameState system needed in US-020/US-021
   - isDialogueActive must be checked in ALL click handlers (hotspot, NPC, exit zone, viewport) to fully block interaction
+---
+
+## 2026-01-28 - US-019: Implement Dialogue Choices
+- What was implemented:
+  - Dialogue choice rendering in DialogueSystem when a node has `responses`
+  - Up to 4 choices displayed as numbered, clickable text lines in light blue (#aaccff)
+  - Hover highlight changes choice color to white (#ffffff)
+  - Click on a choice navigates to its `nextNodeId` in the dialogue tree
+  - Conditional choice filtering: responses with a `condition` field are only shown if the flag is set
+  - Local `dialogueFlags` Map tracks flags set via `dialogue:action` events during the conversation
+  - `isShowingChoices` flag prevents background clicks from advancing dialogue while choices are visible
+  - Choices clear portrait/name/text to use full dialogue box area, restore on selection
+  - If all choices fail their condition check, dialogue ends gracefully
+- Files changed:
+  - src/systems/DialogueSystem.ts (added showChoices, clearChoices, checkCondition, selectChoice methods; choice UI state; dialogueFlags tracking; updated advanceDialogue, handleClick, endDialogue, destroy)
+  - prd.json (US-019 passes: true)
+- **Learnings for future iterations:**
+  - Choices reuse the dialogue box container (depth 200) — choice Text objects are added to container and cleaned up via clearChoices()
+  - The `isShowingChoices` guard in handleClick() is essential — without it, clicking the background area would try to advance past the choice node
+  - Temporary dialogueFlags Map provides minimal flag storage for condition checking within dialogue; will be replaced by GameState singleton in US-021
+  - dialogue:action events with type 'setFlag' are consumed locally so flags set mid-dialogue can gate later conditional choices in the same conversation
+  - Choice layout: startY = DIALOGUE_BOX.Y + 6, lineHeight = 12px, fits up to 4 choices in the 60px dialogue box
+  - Phaser Text.setInteractive({ useHandCursor: true }) + pointerover/pointerout/pointerdown provides clean hover+click for choice text
 ---

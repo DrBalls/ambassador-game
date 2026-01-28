@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DialogueTree, DialogueNode } from '../data/dialogue';
+import { DialogueTree, DialogueNode, DialogueResponse } from '../data/dialogue';
 import { getDialogueTree } from '../data/dialogue';
 import { getSpeakerPortraitKey } from '../data/npcs';
 
@@ -27,6 +27,8 @@ const COLORS = {
   BOX_BORDER: 0x4a4a8e,
   NAME_COLOR: '#ffcc44',
   TEXT_COLOR: '#ffffff',
+  CHOICE_COLOR: '#aaccff',
+  CHOICE_HOVER_COLOR: '#ffffff',
 };
 
 /**
@@ -62,6 +64,15 @@ export class DialogueSystem {
   private displayedChars = 0;
   private typewriterTimer: Phaser.Time.TimerEvent | null = null;
   private isTypewriterComplete = false;
+
+  // Choice UI state
+  private choiceTexts: Phaser.GameObjects.Text[] = [];
+  private isShowingChoices = false;
+
+  // Temporary flag store for condition checking within dialogue.
+  // Flags set via dialogue actions (setFlag) are stored here until
+  // a full GameState system (US-021) is available.
+  private dialogueFlags: Map<string, boolean> = new Map();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -134,6 +145,14 @@ export class DialogueSystem {
     this.scene.events.on('hotspot:action', (action: string, data?: { dialogueId?: string }) => {
       if (action === 'startDialogue' && data?.dialogueId) {
         this.startDialogue(data.dialogueId);
+      }
+    });
+
+    // Track setFlag actions so conditional choices work within dialogue.
+    // When GameState (US-021) exists, this can delegate to it instead.
+    this.scene.events.on('dialogue:action', (dialogueAction: { type: string; target: string; value?: boolean }) => {
+      if (dialogueAction.type === 'setFlag') {
+        this.dialogueFlags.set(dialogueAction.target, dialogueAction.value ?? true);
       }
     });
   }
@@ -264,12 +283,14 @@ export class DialogueSystem {
   }
 
   /**
-   * Handle a click on the dialogue box.
+   * Handle a click on the dialogue box background.
+   * - If choices are showing, do nothing (choices handle their own clicks).
    * - If typewriter is running, complete it instantly.
    * - If typewriter is done, advance to next node or end dialogue.
    */
   private handleClick(): void {
     if (!this.isActive || !this.currentNode) return;
+    if (this.isShowingChoices) return;
 
     if (!this.isTypewriterComplete) {
       // First click: complete typewriter instantly
@@ -284,8 +305,7 @@ export class DialogueSystem {
   /**
    * Advance to the next dialogue node based on current node's progression.
    * - If node has `next`, go to that node.
-   * - If node has `responses`, those are handled by US-019 (DialogueChoices).
-   *   For now, we just end the dialogue when we hit a node with responses or no next.
+   * - If node has `responses`, show clickable choices.
    * - If neither, end dialogue.
    */
   private advanceDialogue(): void {
@@ -304,12 +324,126 @@ export class DialogueSystem {
         this.endDialogue();
       }
     } else if (this.currentNode.responses && this.currentNode.responses.length > 0) {
-      // Branching — emit event for dialogue choices system (US-019)
-      // For now, end dialogue at choice points
-      this.scene.events.emit('dialogue:choices', this.currentNode.responses);
-      this.endDialogue();
+      // Branching — show clickable choices
+      this.showChoices(this.currentNode.responses);
     } else {
       // Terminal node — end dialogue
+      this.endDialogue();
+    }
+  }
+
+  /**
+   * Show dialogue choices as clickable text options.
+   * Filters out responses whose condition flag is not set.
+   * Displays up to 4 visible choices in the dialogue box area.
+   */
+  private showChoices(responses: DialogueResponse[]): void {
+    this.clearChoices();
+    this.isShowingChoices = true;
+
+    // Hide the normal dialogue text and name to make room for choices
+    this.dialogueText.setVisible(false);
+    this.nameText.setVisible(false);
+    if (this.portrait) {
+      this.portrait.setVisible(false);
+    }
+
+    // Filter responses by condition
+    const visible = responses.filter(r => this.checkCondition(r.condition));
+
+    // Limit to 4 choices maximum
+    const choices = visible.slice(0, 4);
+
+    // Layout choices vertically within the dialogue box area
+    const startX = DIALOGUE_BOX.TEXT_PADDING + 4;
+    const startY = DIALOGUE_BOX.Y + DIALOGUE_BOX.PORTRAIT_PADDING + 2;
+    const lineHeight = 12;
+
+    for (let i = 0; i < choices.length; i++) {
+      const choice = choices[i]!;
+      const choiceText = this.scene.add.text(
+        startX,
+        startY + i * lineHeight,
+        `${i + 1}. ${choice.text}`,
+        {
+          fontSize: DIALOGUE_BOX.TEXT_FONT_SIZE,
+          fontFamily: 'Arial',
+          color: COLORS.CHOICE_COLOR,
+          wordWrap: { width: DIALOGUE_BOX.WIDTH - startX - DIALOGUE_BOX.TEXT_PADDING, useAdvancedWrap: true },
+        }
+      );
+
+      choiceText.setInteractive({ useHandCursor: true });
+
+      // Hover highlight
+      choiceText.on('pointerover', () => {
+        choiceText.setColor(COLORS.CHOICE_HOVER_COLOR);
+      });
+      choiceText.on('pointerout', () => {
+        choiceText.setColor(COLORS.CHOICE_COLOR);
+      });
+
+      // Click to select this choice
+      choiceText.on('pointerdown', () => {
+        this.selectChoice(choice);
+      });
+
+      this.container.add(choiceText);
+      this.choiceTexts.push(choiceText);
+    }
+
+    // If no choices are visible (all conditions failed), end dialogue
+    if (choices.length === 0) {
+      this.endDialogue();
+    }
+  }
+
+  /**
+   * Remove all choice text elements from the dialogue box.
+   */
+  private clearChoices(): void {
+    for (const text of this.choiceTexts) {
+      text.removeAllListeners();
+      text.destroy();
+    }
+    this.choiceTexts = [];
+    this.isShowingChoices = false;
+  }
+
+  /**
+   * Check whether a condition flag is met.
+   * If no condition is specified, the check passes (unconditional).
+   * Checks the local dialogueFlags map; will delegate to GameState when available (US-021).
+   */
+  private checkCondition(condition?: string): boolean {
+    if (!condition) return true;
+    return this.dialogueFlags.get(condition) === true;
+  }
+
+  /**
+   * Handle the player selecting a dialogue choice.
+   * Clears choices and navigates to the chosen response's next node.
+   */
+  private selectChoice(response: DialogueResponse): void {
+    if (!this.currentTree) {
+      this.endDialogue();
+      return;
+    }
+
+    this.clearChoices();
+
+    // Restore normal dialogue display elements
+    this.dialogueText.setVisible(true);
+    this.nameText.setVisible(true);
+    if (this.portrait) {
+      this.portrait.setVisible(true);
+    }
+
+    const nextNode = this.currentTree.nodes[response.nextNodeId];
+    if (nextNode) {
+      this.displayNode(nextNode);
+    } else {
+      console.warn(`Choice target node not found: ${response.nextNodeId}`);
       this.endDialogue();
     }
   }
@@ -327,6 +461,9 @@ export class DialogueSystem {
       this.typewriterTimer.destroy();
       this.typewriterTimer = null;
     }
+
+    // Clean up choices
+    this.clearChoices();
 
     // Clean up portrait
     if (this.portrait) {
@@ -347,6 +484,7 @@ export class DialogueSystem {
     if (this.typewriterTimer) {
       this.typewriterTimer.destroy();
     }
+    this.clearChoices();
     this.container.destroy();
   }
 }
