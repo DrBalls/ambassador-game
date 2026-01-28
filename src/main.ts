@@ -1,18 +1,28 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, SCALE_FACTOR } from './constants';
+import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
+import {
+  calculateIntegerScale,
+  getViewportSize,
+  setupResizeListener,
+  applyPixelPerfectCSS,
+} from './utils/PixelScale';
 
 /**
  * The Smallest Ambassador
  * A Sierra-style point-and-click adventure game
  *
  * Native resolution: 320x200 (VGA-style)
- * Scaled 4x to: 1280x800
+ * Dynamically scaled to largest integer multiple that fits viewport
  */
 
-// Phaser game configuration
+// Calculate initial scale based on current viewport
+const viewport = getViewportSize();
+const initialScale = calculateIntegerScale(viewport.width, viewport.height);
+
+// Phaser game configuration with pixel-perfect integer scaling
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: GAME_WIDTH,
@@ -20,11 +30,11 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   backgroundColor: '#000000',
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.NONE, // We handle scaling manually for integer precision
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    zoom: SCALE_FACTOR,
+    zoom: initialScale,
   },
   render: {
     pixelArt: true,
@@ -43,3 +53,14 @@ const config: Phaser.Types.Core.GameConfig = {
 
 // Create and export the game instance
 export const game = new Phaser.Game(config);
+
+// Apply pixel-perfect CSS to canvas once it's created
+game.events.once('ready', () => {
+  const canvas = game.canvas;
+  if (canvas) {
+    applyPixelPerfectCSS(canvas);
+  }
+
+  // Set up resize listener for responsive integer scaling
+  setupResizeListener(game);
+});
