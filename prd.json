@@ -133,7 +133,7 @@
         "Verify in browser: add test items via console, scroll inventory, select items"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

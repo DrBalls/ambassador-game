@@ -16,6 +16,8 @@ Started: 2026-01-28
 - Asset loading: this.load.image() in preload(), this.add.image() in create()
 - UI systems: src/systems/ directory for reusable game systems (VerbSystem, etc.)
 - UI events: Use scene.events.emit('name', data) for decoupled UI communication
+- UI layout (320x200): Viewport (120px, Y=0-120), Inventory (40px, Y=120-160), Sentence (16px, Y=160-176), Verb bar (24px, Y=176-200)
+- Inventory events: 'inventory:selected', 'inventory:deselected', 'inventory:look', 'inventory:changed'
 
 ---
 
@@ -160,4 +162,27 @@ Started: 2026-01-28
   - Hotspots should emit 'hotspot:hover' with name and 'hotspot:leave' events
   - SentenceLineSystem listens to 'verb:selected' from VerbSystem automatically
   - VERB_DISPLAY_TEXT map in VerbSystem provides verb-specific sentence prefixes
+---
+
+## 2026-01-28 - US-007: Create Inventory Panel
+- What was implemented:
+  - Created src/systems/InventorySystem.ts with SCUMM-style inventory panel
+  - 8 visible slots (32x32 pixels each with 4px padding)
+  - Scroll arrows appear when more than 8 items
+  - Left-click to select items (for USE/GIVE actions)
+  - Right-click emits 'inventory:look' event with item description
+  - Selected item has highlight border (COLORS.SLOT_SELECTED)
+  - Inventory state persists in memory (items array)
+  - Updated UI layout to accommodate inventory panel
+- Files changed:
+  - src/systems/InventorySystem.ts (new - inventory system)
+  - src/systems/SentenceLineSystem.ts (updated Y_OFFSET for new layout)
+  - src/scenes/GameScene.ts (integrated InventorySystem, added test helpers)
+- **Learnings for future iterations:**
+  - UI layout updated: Viewport (120px) + Inventory (40px) + Sentence (16px) + Verb bar (24px) = 200px
+  - Gameplay viewport is now 320x120 (above the 80px UI area)
+  - InventorySystem emits events: 'inventory:selected', 'inventory:deselected', 'inventory:look', 'inventory:changed'
+  - Items need InventoryItem interface: { id, name, description, icon (texture key) }
+  - Use scene.input.mouse?.disableContextMenu() to enable right-click handling
+  - Scroll virtualization: only 8 slots rendered, scrollOffset tracks first visible item
 ---
