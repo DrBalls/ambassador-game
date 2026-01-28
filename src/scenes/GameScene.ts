@@ -58,7 +58,7 @@ export class GameScene extends Phaser.Scene {
     const restoredPosition = existingState?.getPlayerPosition();
 
     // Determine initial room and player position
-    const startRoomId = restoredRoomId ?? 'test-room';
+    const startRoomId = restoredRoomId ?? 'counting-spot';
     const startX = restoredPosition && restoredRoomId ? restoredPosition.x : GAME_WIDTH / 2;
     const startY = restoredPosition && restoredRoomId ? restoredPosition.y : 100;
 

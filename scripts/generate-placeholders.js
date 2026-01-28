@@ -443,4 +443,162 @@ const patternElementsBuffer = createPNG(224, 32, (x, y) => {
 });
 savePNG('public/assets/sprites/pattern-elements.png', patternElementsBuffer);
 
+// 10. Counting Spot background: 320x200 — dawn sky with stars, ice edge, telescope
+// This is Pip's private counting spot at the edge of the colony, facing the sky.
+const COUNTING_SPOT_COLORS = {
+  skyTop: { r: 10, g: 8, b: 30 },        // Deep night sky at top
+  skyMid: { r: 30, g: 20, b: 60 },       // Transition purple
+  skyHorizon: { r: 80, g: 50, b: 90 },   // Dawn glow purple
+  dawnGlow: { r: 140, g: 70, b: 60 },    // Warm dawn orange-red
+  iceBase: { r: 180, g: 200, b: 220 },   // Light blue-white ice
+  iceShadow: { r: 100, g: 120, b: 160 }, // Ice shadow blue
+  iceDark: { r: 60, g: 75, b: 110 },     // Deeper ice shadow
+  starWhite: { r: 255, g: 255, b: 240 }, // Warm white stars
+  starBlue: { r: 200, g: 220, b: 255 },  // Cool blue stars
+  telescope: { r: 80, g: 70, b: 50 },    // Dark bronze telescope
+  telescopeLens: { r: 140, g: 180, b: 220 }, // Lens reflection
+};
+
+// Pre-computed star positions (seeded pseudo-random)
+const countingSpotStars = [];
+let seed = 42;
+function seededRandom() {
+  seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+  return (seed >> 16) / 32768;
+}
+// 21 normal stars + 1 wrong-colored star (22 total, as per story — Pip counts 21 normal, 1 wrong color)
+for (let i = 0; i < 22; i++) {
+  countingSpotStars.push({
+    x: Math.floor(seededRandom() * 300) + 10,
+    y: Math.floor(seededRandom() * 55) + 3,
+    size: seededRandom() > 0.7 ? 2 : 1,
+    wrongColor: i === 21, // last star is the "wrong color" one
+  });
+}
+
+const countingSpotBuffer = createPNG(320, 200, (x, y) => {
+  // Sky gradient (top 80px)
+  if (y < 80) {
+    // Check for stars first
+    for (const star of countingSpotStars) {
+      const sdx = x - star.x;
+      const sdy = y - star.y;
+      if (Math.abs(sdx) <= star.size && Math.abs(sdy) <= star.size && (Math.abs(sdx) + Math.abs(sdy) <= star.size + 1)) {
+        if (star.wrongColor) {
+          // The one "wrong" star — aurora-green tint
+          return { r: 100, g: 255, b: 140, a: 255 };
+        }
+        return star.size > 1 ? { ...COUNTING_SPOT_COLORS.starWhite, a: 255 } : { ...COUNTING_SPOT_COLORS.starBlue, a: 255 };
+      }
+    }
+
+    // Sky gradient
+    const t = y / 80;
+    let r, g, b;
+    if (t < 0.5) {
+      // Top to mid
+      const lt = t * 2;
+      r = Math.floor(COUNTING_SPOT_COLORS.skyTop.r + (COUNTING_SPOT_COLORS.skyMid.r - COUNTING_SPOT_COLORS.skyTop.r) * lt);
+      g = Math.floor(COUNTING_SPOT_COLORS.skyTop.g + (COUNTING_SPOT_COLORS.skyMid.g - COUNTING_SPOT_COLORS.skyTop.g) * lt);
+      b = Math.floor(COUNTING_SPOT_COLORS.skyTop.b + (COUNTING_SPOT_COLORS.skyMid.b - COUNTING_SPOT_COLORS.skyTop.b) * lt);
+    } else {
+      // Mid to horizon
+      const lt = (t - 0.5) * 2;
+      r = Math.floor(COUNTING_SPOT_COLORS.skyMid.r + (COUNTING_SPOT_COLORS.skyHorizon.r - COUNTING_SPOT_COLORS.skyMid.r) * lt);
+      g = Math.floor(COUNTING_SPOT_COLORS.skyMid.g + (COUNTING_SPOT_COLORS.skyHorizon.g - COUNTING_SPOT_COLORS.skyMid.g) * lt);
+      b = Math.floor(COUNTING_SPOT_COLORS.skyMid.b + (COUNTING_SPOT_COLORS.skyHorizon.b - COUNTING_SPOT_COLORS.skyMid.b) * lt);
+    }
+
+    // Add dawn glow near horizon (y 60-80, concentrated at center-right)
+    if (y > 60) {
+      const glowT = (y - 60) / 20;
+      const horizonDist = Math.abs(x - 220) / 160;
+      const glowStrength = glowT * Math.max(0, 1 - horizonDist);
+      r = Math.floor(r + (COUNTING_SPOT_COLORS.dawnGlow.r - r) * glowStrength * 0.6);
+      g = Math.floor(g + (COUNTING_SPOT_COLORS.dawnGlow.g - g) * glowStrength * 0.4);
+      b = Math.floor(b + (COUNTING_SPOT_COLORS.dawnGlow.b - b) * glowStrength * 0.3);
+    }
+
+    return { r, g, b, a: 255 };
+  }
+
+  // Ice and ground area (y 80-200)
+  // Ice edge / cliff (y 80-95)
+  if (y < 95) {
+    const edgeT = (y - 80) / 15;
+    // Jagged ice edge silhouette
+    const jaggedness = Math.sin(x * 0.15) * 3 + Math.sin(x * 0.3) * 2;
+    if (y < 82 + jaggedness) {
+      // Sky showing through jagged edge
+      const t2 = 0.95;
+      const r2 = Math.floor(COUNTING_SPOT_COLORS.skyHorizon.r + (COUNTING_SPOT_COLORS.dawnGlow.r - COUNTING_SPOT_COLORS.skyHorizon.r) * 0.3);
+      const g2 = Math.floor(COUNTING_SPOT_COLORS.skyHorizon.g);
+      const b2 = Math.floor(COUNTING_SPOT_COLORS.skyHorizon.b);
+      return { r: r2, g: g2, b: b2, a: 255 };
+    }
+    // Ice edge face (lighter at top, darker below)
+    const r = Math.floor(COUNTING_SPOT_COLORS.iceBase.r - edgeT * 40);
+    const g = Math.floor(COUNTING_SPOT_COLORS.iceBase.g - edgeT * 40);
+    const b = Math.floor(COUNTING_SPOT_COLORS.iceBase.b - edgeT * 20);
+    return { r, g, b, a: 255 };
+  }
+
+  // Telescope (at x 250-268, y 78-115) — tripod with tube
+  // Tripod legs
+  const isTripodLeft = Math.abs(x - (259 - (y - 100) * 0.3)) < 1 && y >= 100 && y < 116;
+  const isTripodRight = Math.abs(x - (259 + (y - 100) * 0.3)) < 1 && y >= 100 && y < 116;
+  const isTripodCenter = x === 259 && y >= 95 && y < 105;
+  // Telescope tube (angled upward to the right)
+  const tubeAngle = -0.4; // radians
+  const tubeCx = 259;
+  const tubeCy = 95;
+  const tubeLen = 20;
+  const relX = x - tubeCx;
+  const relY = y - tubeCy;
+  const along = relX * Math.cos(tubeAngle) + relY * Math.sin(tubeAngle);
+  const perp = Math.abs(-relX * Math.sin(tubeAngle) + relY * Math.cos(tubeAngle));
+  const isTube = along >= -tubeLen && along <= tubeLen * 0.3 && perp < 2.5;
+  const isLens = along < -tubeLen && along >= -tubeLen - 3 && perp < 3.5;
+
+  if (isTripodLeft || isTripodRight || isTripodCenter || isTube) {
+    return { ...COUNTING_SPOT_COLORS.telescope, a: 255 };
+  }
+  if (isLens) {
+    return { ...COUNTING_SPOT_COLORS.telescopeLens, a: 255 };
+  }
+
+  // Ice marks / scratches on the wall (y 95-110, x 40-90) — Pool's mysterious writing
+  if (y >= 96 && y < 108 && x >= 42 && x < 88) {
+    // Scratched marks — thin lines at various angles
+    const markGroup = Math.floor((x - 42) / 8);
+    const markX = (x - 42) % 8;
+    // Vertical-ish marks in groups of varying heights
+    const markHeights = [8, 10, 7, 9, 11, 6];
+    const mh = markHeights[markGroup % markHeights.length];
+    const markStart = 96 + (12 - mh) / 2;
+    if (markX === 2 && y >= markStart && y < markStart + mh) {
+      return { r: 150, g: 170, b: 200, a: 255 }; // Lighter scratch color
+    }
+    // Diagonal accent marks
+    if (markX === 4 && markGroup % 3 === 0 && y >= markStart + 2 && y < markStart + mh - 2) {
+      return { r: 140, g: 160, b: 190, a: 255 };
+    }
+  }
+
+  // Main ice ground surface
+  // Add subtle ice texture variation
+  const noiseVal = Math.sin(x * 0.2 + y * 0.1) * 0.3 + Math.sin(x * 0.05 + y * 0.15) * 0.2;
+  const depthT = (y - 95) / 105; // 0 at top of ground, 1 at bottom
+  const baseR = Math.floor(COUNTING_SPOT_COLORS.iceShadow.r + (COUNTING_SPOT_COLORS.iceBase.r - COUNTING_SPOT_COLORS.iceShadow.r) * (1 - depthT * 0.5));
+  const baseG = Math.floor(COUNTING_SPOT_COLORS.iceShadow.g + (COUNTING_SPOT_COLORS.iceBase.g - COUNTING_SPOT_COLORS.iceShadow.g) * (1 - depthT * 0.5));
+  const baseB = Math.floor(COUNTING_SPOT_COLORS.iceShadow.b + (COUNTING_SPOT_COLORS.iceBase.b - COUNTING_SPOT_COLORS.iceShadow.b) * (1 - depthT * 0.5));
+
+  const texR = Math.max(0, Math.min(255, Math.floor(baseR + noiseVal * 15)));
+  const texG = Math.max(0, Math.min(255, Math.floor(baseG + noiseVal * 15)));
+  const texB = Math.max(0, Math.min(255, Math.floor(baseB + noiseVal * 10)));
+
+  return { r: texR, g: texG, b: texB, a: 255 };
+});
+savePNG('public/assets/backgrounds/counting-spot.png', countingSpotBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

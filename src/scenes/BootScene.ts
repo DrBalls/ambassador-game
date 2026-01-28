@@ -18,6 +18,7 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     // Load background images
     this.load.image('bg-placeholder', 'assets/backgrounds/placeholder.png');
+    this.load.image('bg-counting-spot', 'assets/backgrounds/counting-spot.png');
 
     // Load character sprites
     this.load.image('character', 'assets/sprites/character.png');

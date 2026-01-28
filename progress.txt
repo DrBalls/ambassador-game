@@ -67,6 +67,10 @@ Started: 2026-01-28
 - PatternInput validation: element-by-element comparison against target; success → green flash + 'pattern:inputSuccess'; fail → red flash + 'pattern:inputFail' + retry
 - PatternInput depth: container at depth 150 (same as PatternDisplay)
 - Console test helper: window.testPatternInput([0,2,4]) creates a PatternInput in GameScene
+- Content room naming: room id = kebab-case (e.g., 'counting-spot'), background key = 'bg-{room-id}', file = src/data/rooms/{room-id}.ts
+- Content room backgrounds: Generated in scripts/generate-placeholders.js, saved to public/assets/backgrounds/{room-id}.png
+- Default start room: GameScene.create() uses 'counting-spot' as fallback when no saved state exists
+- Exit targets can reference future rooms — exit zone renders and shows in sentence line, transition logs warning if target not yet registered
 
 ---
 
@@ -786,4 +790,35 @@ Started: 2026-01-28
   - Input slot sprites use setDisplaySize() for consistent sizing regardless of sprite sheet frame dimensions
   - isActive flag gates all input handlers — set false during submit animation, re-set true on fail for retry
   - Button hover effects use element's colorRGB at full intensity (hover) vs 50% dimmed (normal) for visual feedback
+---
+
+## 2026-01-28 - US-027: Create Pip's Counting Spot Room
+- What was implemented:
+  - Created procedural background (320x200) with dawn sky gradient, 22 stars (21 normal + 1 green "wrong color"), jagged ice edge, telescope on tripod, and Pool's mysterious ice marks
+  - Added counting-spot room data file with 3 hotspots: Stars, Telescope, Ice Wall Marks
+  - Stars LOOK response describes 21 normal stars + 1 wrong-colored green star getting brighter
+  - Telescope LOOK/USE responses describe Pip's salvaged telescope and viewing the strange star
+  - Ice Wall Marks LOOK/USE responses describe Pool's mysterious base-7 counting marks (7 groups of 7 = 49)
+  - All hotspots have full verb responses (look, use, take, talk) with story-appropriate text
+  - South exit to Colony Gathering room configured (targetRoomId: 'colony-gathering')
+  - Ambient sound reference set to 'amb-wind'
+  - Room registered in ROOMS registry and background preloaded in BootScene
+  - GameScene default start room changed from 'test-room' to 'counting-spot'
+  - Browser verified: all hotspots show correct sentence line text, exit shows "Walk to Colony Gathering"
+- Files changed:
+  - scripts/generate-placeholders.js (added counting-spot background generation with sky gradient, stars, ice, telescope, marks)
+  - public/assets/backgrounds/counting-spot.png (new - 320x200 dawn sky background)
+  - src/data/rooms/counting-spot.ts (new - Pip's Counting Spot room data)
+  - src/data/rooms/index.ts (registered counting-spot in ROOMS)
+  - src/scenes/BootScene.ts (added bg-counting-spot image preload)
+  - src/scenes/GameScene.ts (changed default start room to counting-spot)
+  - prd.json (US-027 passes: true)
+- **Learnings for future iterations:**
+  - Content rooms follow same pattern as test rooms: RoomData interface, register in ROOMS, preload background in BootScene
+  - Background asset key convention: 'bg-{room-id}' (e.g., 'bg-counting-spot')
+  - Background asset path: 'assets/backgrounds/{room-id}.png'
+  - Procedural background generation in generate-placeholders.js uses seeded random for deterministic star placement
+  - The walkable area for counting-spot is narrower (Y: 96-116) since ice ground starts lower due to the sky/horizon being taller
+  - Exit targetRoomId can reference rooms not yet created — the exit zone will show in sentence line but transition will log a warning until the target room exists
+  - Default start room in GameScene.create() should be updated as real content rooms are added (was 'test-room', now 'counting-spot')
 ---
