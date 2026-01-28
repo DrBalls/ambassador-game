@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../constants';
+import { getCombinationResult, getItemDefinition } from '../data/items';
+import { Verb } from './VerbSystem';
 
 /**
  * Layout constants for the inventory panel
@@ -73,6 +75,7 @@ export class InventorySystem {
   private selectedIndex: number | null = null; // Index in items array
   private leftArrow: Phaser.GameObjects.Container | null = null;
   private rightArrow: Phaser.GameObjects.Container | null = null;
+  private currentVerb: Verb = Verb.WALK;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -252,16 +255,29 @@ export class InventorySystem {
         // Right-click: LOOK at item (show description)
         this.scene.events.emit('inventory:look', item);
       } else {
-        // Left-click: Select/deselect item
-        if (this.selectedIndex === itemIndex) {
-          // Deselect if already selected
-          this.selectedIndex = null;
-          this.scene.events.emit('inventory:deselected');
+        // Check if USE verb is active and an item is already selected
+        if (
+          this.currentVerb === Verb.USE &&
+          this.selectedIndex !== null &&
+          this.selectedIndex !== itemIndex
+        ) {
+          // Attempt item combination
+          const sourceItem = this.items[this.selectedIndex];
+          if (sourceItem) {
+            this.attemptCombination(sourceItem, item);
+          }
         } else {
-          this.selectedIndex = itemIndex;
-          this.scene.events.emit('inventory:selected', item);
+          // Normal select/deselect behavior
+          if (this.selectedIndex === itemIndex) {
+            // Deselect if already selected
+            this.selectedIndex = null;
+            this.scene.events.emit('inventory:deselected');
+          } else {
+            this.selectedIndex = itemIndex;
+            this.scene.events.emit('inventory:selected', item);
+          }
+          this.updateSlots();
         }
-        this.updateSlots();
       }
     });
   }
@@ -444,11 +460,58 @@ export class InventorySystem {
   }
 
   /**
+   * Attempt to combine two inventory items
+   */
+  private attemptCombination(
+    sourceItem: InventoryItem,
+    targetItem: InventoryItem
+  ): void {
+    const result = getCombinationResult(sourceItem.id, targetItem.id);
+
+    if (result) {
+      const resultItem = getItemDefinition(result.resultItemId);
+      if (!resultItem) return;
+
+      // Remove source items
+      if (result.removeSource) {
+        this.removeItem(sourceItem.id);
+      }
+      if (result.removeTarget) {
+        this.removeItem(targetItem.id);
+      }
+
+      // Add result item
+      this.addItem({
+        id: resultItem.id,
+        name: resultItem.name,
+        description: resultItem.description,
+        icon: resultItem.icon,
+      });
+
+      // Emit combination success
+      this.scene.events.emit('combination:success', resultItem);
+    } else {
+      // Emit combination failure
+      this.scene.events.emit('combination:fail', sourceItem, targetItem);
+    }
+
+    // Clear selection after combination attempt
+    this.selectedIndex = null;
+    this.updateSlots();
+    this.scene.events.emit('inventory:deselected');
+  }
+
+  /**
    * Set up event listeners
    */
   private setupEventListeners(): void {
     // Enable right-click context menu prevention on game canvas
     this.scene.input.mouse?.disableContextMenu();
+
+    // Track the current verb for combination logic
+    this.scene.events.on('verb:selected', (verb: Verb) => {
+      this.currentVerb = verb;
+    });
   }
 
   /**

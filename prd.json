@@ -150,7 +150,7 @@
         "Verify in browser: combine two test items that should work, confirm new item appears"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

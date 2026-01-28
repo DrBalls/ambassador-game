@@ -18,6 +18,9 @@ Started: 2026-01-28
 - UI events: Use scene.events.emit('name', data) for decoupled UI communication
 - UI layout (320x200): Viewport (120px, Y=0-120), Inventory (40px, Y=120-160), Sentence (16px, Y=160-176), Verb bar (24px, Y=176-200)
 - Inventory events: 'inventory:selected', 'inventory:deselected', 'inventory:look', 'inventory:changed'
+- Item definitions: src/data/items.ts contains ITEM_DEFINITIONS, ITEM_COMBINATIONS, and lookup functions
+- Combination events: 'combination:success' (ItemDefinition), 'combination:fail' (source, target InventoryItem)
+- Combination keys: "sourceId+targetId" format, register both orderings for bidirectional support
 
 ---
 
@@ -185,4 +188,27 @@ Started: 2026-01-28
   - Items need InventoryItem interface: { id, name, description, icon (texture key) }
   - Use scene.input.mouse?.disableContextMenu() to enable right-click handling
   - Scroll virtualization: only 8 slots rendered, scrollOffset tracks first visible item
+---
+
+## 2026-01-28 - US-008: Implement Item Combination
+- What was implemented:
+  - Created src/data/items.ts with ItemDefinition interface (extends InventoryItem with combinesWith)
+  - Item combination registry using composite keys ("sourceId+targetId" → CombinationResult)
+  - Bidirectional combo registration (A+B and B+A both work)
+  - InventorySystem tracks current verb via 'verb:selected' event
+  - When USE verb is active and an item is selected, clicking a second item triggers combination check
+  - Successful combination: removes source items, adds result item, emits 'combination:success'
+  - Failed combination: preserves all items, emits 'combination:fail'
+  - GameScene shows temporary feedback text ("Created X!" or "That doesn't work.") with fade-out
+  - Test items defined: rope + weight → weighted-rope, ice-lens + abalone-shell → signal-mirror
+- Files changed:
+  - src/data/items.ts (new - item definitions, combination registry, lookup functions)
+  - src/systems/InventorySystem.ts (added combination logic, verb tracking, attemptCombination method)
+  - src/scenes/GameScene.ts (added feedback text, combination event listeners, showFeedback method)
+- **Learnings for future iterations:**
+  - Combination keys use format "sourceId+targetId" — register both orderings for bidirectional combos
+  - InventorySystem imports from data/items.ts for combination logic (getCombinationResult, getItemDefinition)
+  - New events: 'combination:success' (emits ItemDefinition), 'combination:fail' (emits source + target InventoryItem)
+  - Feedback text uses Phaser tweens for fade-out animation (1.5s display + 0.5s fade)
+  - The InventorySystem needs to track currentVerb to know when USE mode is active for combinations
 ---

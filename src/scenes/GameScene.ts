@@ -3,6 +3,7 @@ import { GAME_WIDTH } from '../constants';
 import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
+import { ItemDefinition } from '../data/items';
 
 /**
  * GameScene - Main gameplay container
@@ -14,6 +15,7 @@ export class GameScene extends Phaser.Scene {
   private verbSystem!: VerbSystem;
   private sentenceLineSystem!: SentenceLineSystem;
   private inventorySystem!: InventorySystem;
+  private feedbackText!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -57,6 +59,33 @@ export class GameScene extends Phaser.Scene {
     this.events.on('inventory:look', (item: InventoryItem) => {
       console.log(`Look at inventory item: ${item.name} - ${item.description}`);
     });
+
+    // Create feedback text for combination results (centered in viewport area)
+    this.feedbackText = this.add.text(GAME_WIDTH / 2, 60, '', {
+      fontSize: '8px',
+      fontFamily: 'Arial',
+      color: '#ffffff',
+      backgroundColor: '#000000',
+      padding: { x: 4, y: 2 },
+    });
+    this.feedbackText.setOrigin(0.5, 0.5);
+    this.feedbackText.setDepth(100);
+    this.feedbackText.setVisible(false);
+
+    // Listen for combination events
+    this.events.on(
+      'combination:success',
+      (resultItem: ItemDefinition) => {
+        this.showFeedback(`Created ${resultItem.name}!`);
+      }
+    );
+
+    this.events.on(
+      'combination:fail',
+      (_source: InventoryItem, _target: InventoryItem) => {
+        this.showFeedback("That doesn't work.");
+      }
+    );
 
     // Expose inventory system globally for console testing
     // Usage: game.scene.getScene('GameScene').inventorySystem.addItem({...})
@@ -116,6 +145,26 @@ export class GameScene extends Phaser.Scene {
    */
   getInventorySystem(): InventorySystem {
     return this.inventorySystem;
+  }
+
+  /**
+   * Show temporary feedback text in the viewport area
+   */
+  private showFeedback(message: string): void {
+    this.feedbackText.setText(message);
+    this.feedbackText.setVisible(true);
+    this.feedbackText.setAlpha(1);
+
+    // Fade out after 2 seconds
+    this.tweens.add({
+      targets: this.feedbackText,
+      alpha: 0,
+      duration: 500,
+      delay: 1500,
+      onComplete: () => {
+        this.feedbackText.setVisible(false);
+      },
+    });
   }
 
   update(_time: number, _delta: number): void {
