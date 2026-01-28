@@ -362,6 +362,12 @@ Started: 2026-01-28
 - WalkSystem.findPath(sx,sy,gx,gy) returns smoothed Point[] path or null; includes line-of-sight path smoothing
 - WalkSystem.toggleDebug() toggles F1 walkable grid overlay (green=walkable, red=blocked)
 - WalkSystem.clearDebug() must be called on room change to clean up graphics
+- NPC data: src/data/npcs.ts contains NPC_DEFINITIONS registry and getNPCDefinition() lookup
+- NPC entities: src/entities/NPC.ts extends Character with interactive zone for verb actions
+- NPC events: 'npc:click' (NPCDefinition) emitted on click, 'hotspot:hover'/'hotspot:leave' for sentence line
+- NPC lifecycle: GameScene.createNPCs() on room load, clearNPCs() on room change — follows same pattern as hotspots/exits
+- NPC sprites: BootScene iterates NPC_DEFINITIONS to preload all sprite sheets dynamically
+- NPC anim keys: `${npcId}-idle` pattern prevents animation key collisions between NPCs
 
 ---
 
@@ -419,4 +425,34 @@ Started: 2026-01-28
   - WalkSystem.buildGrid() must be called on each room load after walkablePolygon is set
   - WalkSystem.clearDebug() must be called on room change to destroy old Graphics object
   - The existing clampToWalkableArea() still works for boundary projection before A* runs
+---
+
+## 2026-01-28 - US-016: Create NPC Characters
+- What was implemented:
+  - Created src/data/npcs.ts with NPCDefinition interface and NPC_DEFINITIONS registry
+  - Created src/entities/NPC.ts extending Character with idle animation and interactive zone
+  - NPCs are both visual characters (sprite + animation) and interactive hotspots (hover/click events)
+  - NPC interactive zone positioned over sprite for LOOK, TALK, USE, TAKE verb actions
+  - NPCs emit 'npc:click' event with their NPCDefinition, handled by GameScene.handleNPCClick()
+  - GameScene.createNPCs()/clearNPCs() manage NPC lifecycle on room load/change
+  - BootScene dynamically loads all NPC sprite sheets from NPC_DEFINITIONS registry
+  - Generated NPC "Bubble" placeholder sprite sheet (2-frame idle, lighter blue body, big eyes)
+  - Test room already has a CharacterPlacement for 'bubble' at (240, 80) facing left
+- Files changed:
+  - src/data/npcs.ts (new - NPC definitions, registry, getNPCDefinition lookup)
+  - src/entities/NPC.ts (new - NPC entity extending Character with interactive zone)
+  - src/scenes/GameScene.ts (NPC integration: createNPCs, clearNPCs, handleNPCClick, npc:click listener)
+  - src/scenes/BootScene.ts (dynamic NPC sprite sheet loading from NPC_DEFINITIONS)
+  - scripts/generate-placeholders.js (NPC Bubble sprite sheet generation)
+  - public/assets/sprites/npc-bubble-sheet.png (new - 2-frame NPC idle sprite sheet)
+  - prd.json (US-016 passes: true)
+- **Learnings for future iterations:**
+  - NPCs are a composition of Character (sprite + animation) + interactive Zone (hotspot behavior)
+  - NPC uses a separate event 'npc:click' (not 'hotspot:click') to avoid confusion with room hotspots
+  - Interactive zone position accounts for sprite origin (0.5, 1): zone center is at (x, y - height/2)
+  - NPC animation keys use pattern `${npcId}-idle` to avoid collisions between NPCs
+  - BootScene iterates NPC_DEFINITIONS to preload all NPC sprite sheets dynamically
+  - NPC responses use the same HotspotResponses type as room hotspots for consistency
+  - TALK verb on NPC emits 'hotspot:action' with action='startDialogue' — will connect to DialogueSystem in US-018
+  - clearNPCs() must be called alongside clearHotspots() and clearExitZones() on room change
 ---

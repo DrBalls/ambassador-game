@@ -221,4 +221,64 @@ const playerWalkBuffer = createPNG(128, 48, (x, y) => {
 });
 savePNG('public/assets/sprites/player-walk-sheet.png', playerWalkBuffer);
 
+// 6. NPC "Bubble" sprite sheet: 2 frames (32x48 each) → 64x48 total
+// Visually distinct from player: lighter blue body, bigger eyes, rounder shape
+const NPC_COLORS = {
+  body: { r: 60, g: 80, b: 140 },       // Lighter blue body
+  belly: { r: 220, g: 230, b: 255 },     // Light blue-white belly
+  beak: { r: 255, g: 180, b: 50 },       // Yellow-orange beak
+  eyes: { r: 255, g: 255, b: 255 },      // White eyes
+  pupil: { r: 20, g: 20, b: 60 },        // Dark pupils
+  feet: { r: 255, g: 180, b: 50 },       // Yellow-orange feet
+};
+
+const npcBubbleBuffer = createPNG(64, 48, (x, y) => {
+  const frame = Math.floor(x / 32);
+  const localX = x % 32;
+
+  // Frame 1 has a 1px bob
+  const bobOffset = frame === 1 ? 1 : 0;
+  const adjustedY = y - bobOffset;
+
+  if (adjustedY < 0 || adjustedY >= 48) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  // Rounder, slightly wider body for Bubble
+  const isBody = localX >= 3 && localX < 29 && adjustedY >= 6 && adjustedY < 44;
+  const isHead = localX >= 6 && localX < 26 && adjustedY >= 0 && adjustedY < 14;
+  const isBelly = localX >= 9 && localX < 23 && adjustedY >= 14 && adjustedY < 40;
+
+  // Bigger eyes for a friendly look
+  const isLeftEye = localX >= 9 && localX < 14 && adjustedY >= 4 && adjustedY < 10;
+  const isRightEye = localX >= 18 && localX < 23 && adjustedY >= 4 && adjustedY < 10;
+  // Pupils inside eyes
+  const isLeftPupil = localX >= 11 && localX < 13 && adjustedY >= 5 && adjustedY < 8;
+  const isRightPupil = localX >= 20 && localX < 22 && adjustedY >= 5 && adjustedY < 8;
+
+  // Beak
+  const isBeak = localX >= 13 && localX < 19 && adjustedY >= 10 && adjustedY < 13;
+
+  // Feet
+  const isFeet = (localX >= 7 && localX < 14 || localX >= 18 && localX < 25) && adjustedY >= 44 && adjustedY < 48;
+
+  if (isLeftPupil || isRightPupil) {
+    return { ...NPC_COLORS.pupil, a: 255 };
+  }
+  if (isLeftEye || isRightEye) {
+    return { ...NPC_COLORS.eyes, a: 255 };
+  }
+  if (isBeak || isFeet) {
+    return { ...NPC_COLORS.beak, a: 255 };
+  }
+  if (isBelly) {
+    return { ...NPC_COLORS.belly, a: 255 };
+  }
+  if (isBody || isHead) {
+    return { ...NPC_COLORS.body, a: 255 };
+  }
+  return { r: 0, g: 0, b: 0, a: 0 };
+});
+savePNG('public/assets/sprites/npc-bubble-sheet.png', npcBubbleBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

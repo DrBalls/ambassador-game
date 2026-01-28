@@ -9,6 +9,8 @@ import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from
 import { Hotspot } from '../entities/Hotspot';
 import { Verb } from '../systems/VerbSystem';
 import { Player } from '../entities/Player';
+import { NPC } from '../entities/NPC';
+import { NPCDefinition, getNPCDefinition } from '../data/npcs';
 
 /** Height of the gameplay viewport area (above UI panels) */
 const VIEWPORT_HEIGHT = 120;
@@ -28,6 +30,7 @@ export class GameScene extends Phaser.Scene {
   private roomBackground: Phaser.GameObjects.Image | null = null;
   private hotspots: Hotspot[] = [];
   private exitZones: Phaser.GameObjects.Zone[] = [];
+  private npcs: NPC[] = [];
   private isTransitioning = false;
   private player!: Player;
   private walkablePolygon: Phaser.Geom.Polygon | null = null;
@@ -71,6 +74,11 @@ export class GameScene extends Phaser.Scene {
     // Listen for hotspot clicks — dispatch verb action
     this.events.on('hotspot:click', (hotspotData: HotspotData) => {
       this.handleHotspotClick(hotspotData);
+    });
+
+    // Listen for NPC clicks — dispatch verb action using NPC responses
+    this.events.on('npc:click', (npcDef: NPCDefinition) => {
+      this.handleNPCClick(npcDef);
     });
 
     // Listen for verb selection events (useful for debugging)
@@ -151,6 +159,38 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Handle an NPC click — resolve the active verb's response from NPC definition
+   */
+  private handleNPCClick(npcDef: NPCDefinition): void {
+    const verb = this.verbSystem.getSelectedVerb();
+
+    // Map verb to response key (same mapping as hotspots)
+    const VERB_TO_KEY: Record<Verb, keyof NPCDefinition['responses']> = {
+      [Verb.WALK]: 'walk',
+      [Verb.LOOK]: 'look',
+      [Verb.TALK]: 'talk',
+      [Verb.USE]: 'use',
+      [Verb.TAKE]: 'take',
+      [Verb.GIVE]: 'look',
+    };
+
+    const key = VERB_TO_KEY[verb];
+    const response = npcDef.responses[key];
+
+    if (!response) {
+      this.showFeedback('Nothing happens.');
+      return;
+    }
+
+    if (typeof response === 'string') {
+      this.showFeedback(response);
+    } else {
+      this.events.emit('hotspot:action', response.action, response.data);
+      console.log(`NPC action: ${response.action}`, response.data);
+    }
+  }
+
+  /**
    * Get the verb system for external access
    */
   getVerbSystem(): VerbSystem {
@@ -215,9 +255,10 @@ export class GameScene extends Phaser.Scene {
       this.roomBackground = null;
     }
 
-    // Clear previous hotspots, exit zones, and debug overlay
+    // Clear previous hotspots, exit zones, NPCs, and debug overlay
     this.clearHotspots();
     this.clearExitZones();
+    this.clearNPCs();
     this.walkSystem.clearDebug();
 
     this.currentRoom = room;
@@ -243,6 +284,9 @@ export class GameScene extends Phaser.Scene {
     // Create exit zones from room data
     this.createExitZones(room);
 
+    // Create NPC entities from room data
+    this.createNPCs(room);
+
     console.log(`Loaded room: ${room.name} (${room.id})`);
   }
 
@@ -264,6 +308,38 @@ export class GameScene extends Phaser.Scene {
       hotspot.destroy();
     }
     this.hotspots = [];
+  }
+
+  /**
+   * Create NPC entities from room data character placements
+   */
+  private createNPCs(room: RoomData): void {
+    for (const placement of room.characters) {
+      const npcDef = getNPCDefinition(placement.id);
+      if (!npcDef) {
+        console.warn(`NPC definition not found: ${placement.id}`);
+        continue;
+      }
+
+      const npc = new NPC(
+        this,
+        placement.position.x,
+        placement.position.y,
+        placement.facing,
+        npcDef
+      );
+      this.npcs.push(npc);
+    }
+  }
+
+  /**
+   * Destroy all current NPC entities
+   */
+  private clearNPCs(): void {
+    for (const npc of this.npcs) {
+      npc.destroy();
+    }
+    this.npcs = [];
   }
 
   /**

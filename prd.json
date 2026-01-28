@@ -288,7 +288,7 @@
         "Verify in browser: test room has NPC, can look at and talk to them"
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

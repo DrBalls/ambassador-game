@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { PLAYER_CONFIG } from '../entities/Player';
+import { NPC_DEFINITIONS } from '../data/npcs';
 
 /**
  * BootScene - Initial loading scene
@@ -29,6 +30,14 @@ export class BootScene extends Phaser.Scene {
       frameWidth: PLAYER_CONFIG.frameWidth,
       frameHeight: PLAYER_CONFIG.frameHeight,
     });
+
+    // Load NPC sprite sheets
+    for (const npc of Object.values(NPC_DEFINITIONS)) {
+      this.load.spritesheet(npc.textureKey, npc.assetPath, {
+        frameWidth: npc.frameWidth,
+        frameHeight: npc.frameHeight,
+      });
+    }
 
     // Load UI elements
     this.load.image('ui-button', 'assets/ui/button.png');
