@@ -4,10 +4,13 @@ import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { ItemDefinition } from '../data/items';
-import { RoomData, HotspotData, HotspotCallback, ExitData, getRoom } from '../data/rooms';
+import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
 import { Verb } from '../systems/VerbSystem';
 import { Player } from '../entities/Player';
+
+/** Height of the gameplay viewport area (above UI panels) */
+const VIEWPORT_HEIGHT = 120;
 
 /**
  * GameScene - Main gameplay container
@@ -26,6 +29,7 @@ export class GameScene extends Phaser.Scene {
   private exitZones: Phaser.GameObjects.Zone[] = [];
   private isTransitioning = false;
   private player!: Player;
+  private walkablePolygon: Phaser.Geom.Polygon | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -37,6 +41,11 @@ export class GameScene extends Phaser.Scene {
 
     // Create the player character in center of viewport (bottom-center origin, so Y=100 puts feet near bottom of walkable area)
     this.player = new Player(this, GAME_WIDTH / 2, 100);
+
+    // Handle click-to-walk: pointer down in the viewport area
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.handleViewportClick(pointer);
+    });
 
     // Initialize UI systems in order (bottom to top visually, but create order doesn't matter)
     // UI Layout:
@@ -206,6 +215,14 @@ export class GameScene extends Phaser.Scene {
     // Ensure background renders behind everything else
     this.roomBackground.setDepth(-1);
 
+    // Build walkable area polygon for point-in-polygon tests
+    if (room.walkableArea.length >= 3) {
+      const phaserPoints = room.walkableArea.map(p => new Phaser.Geom.Point(p.x, p.y));
+      this.walkablePolygon = new Phaser.Geom.Polygon(phaserPoints);
+    } else {
+      this.walkablePolygon = null;
+    }
+
     // Create hotspot entities from room data
     this.createHotspots(room);
 
@@ -331,6 +348,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.isTransitioning = true;
+    this.player.stopWalking();
 
     // Fade out (500ms)
     this.cameras.main.fadeOut(500, 0, 0, 0);
@@ -358,7 +376,86 @@ export class GameScene extends Phaser.Scene {
     return this.currentRoom;
   }
 
-  update(_time: number, _delta: number): void {
-    // Game loop logic will be added in future stories
+  /**
+   * Handle a click in the viewport area for walking.
+   * Only triggers when WALK verb is selected and the click is in the viewport.
+   */
+  private handleViewportClick(pointer: Phaser.Input.Pointer): void {
+    if (this.isTransitioning) return;
+
+    const verb = this.verbSystem.getSelectedVerb();
+    if (verb !== Verb.WALK) return;
+
+    // Only handle clicks in the viewport area (above UI)
+    if (pointer.y >= VIEWPORT_HEIGHT) return;
+
+    const targetX = pointer.x;
+    const targetY = pointer.y;
+
+    if (this.isPointInWalkableArea(targetX, targetY)) {
+      this.player.walkTo(targetX, targetY);
+    } else {
+      // Find the nearest walkable point
+      const clamped = this.clampToWalkableArea(targetX, targetY);
+      if (clamped) {
+        this.player.walkTo(clamped.x, clamped.y);
+      }
+    }
+  }
+
+  /**
+   * Test whether a point is inside the current room's walkable area polygon.
+   */
+  private isPointInWalkableArea(x: number, y: number): boolean {
+    if (!this.walkablePolygon) return false;
+    return Phaser.Geom.Polygon.Contains(this.walkablePolygon, x, y);
+  }
+
+  /**
+   * Find the nearest point on the walkable area boundary to the given point.
+   * Projects the point onto each edge of the polygon and returns the closest result.
+   */
+  private clampToWalkableArea(x: number, y: number): Point | null {
+    if (!this.currentRoom) return null;
+    const points = this.currentRoom.walkableArea;
+    if (points.length < 2) return null;
+
+    let bestDist = Infinity;
+    let bestPoint: Point | null = null;
+
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i]!;
+      const b = points[(i + 1) % points.length]!;
+
+      // Project (x,y) onto segment ab
+      const abx = b.x - a.x;
+      const aby = b.y - a.y;
+      const apx = x - a.x;
+      const apy = y - a.y;
+      const abLenSq = abx * abx + aby * aby;
+
+      let t = 0;
+      if (abLenSq > 0) {
+        t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
+      }
+
+      const px = a.x + t * abx;
+      const py = a.y + t * aby;
+      const dx = x - px;
+      const dy = y - py;
+      const dist = dx * dx + dy * dy;
+
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestPoint = { x: px, y: py };
+      }
+    }
+
+    return bestPoint;
+  }
+
+  update(_time: number, delta: number): void {
+    // Update player walking movement
+    this.player.updateMovement(delta);
   }
 }

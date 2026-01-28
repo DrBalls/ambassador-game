@@ -159,4 +159,66 @@ const playerSheetBuffer = createPNG(64, 48, (x, y) => {
 });
 savePNG('public/assets/sprites/player-sheet.png', playerSheetBuffer);
 
+// 5. Player walk sprite sheet: 4 frames (32x48 each) → 128x48 total
+// Frame 0: left foot forward, Frame 1: standing, Frame 2: right foot forward, Frame 3: standing (mirror)
+const playerWalkBuffer = createPNG(128, 48, (x, y) => {
+  const frame = Math.floor(x / 32);
+  const localX = x % 32;
+
+  // Leg offsets per frame to simulate walking
+  // Frame 0: left leg forward (shift left foot down)
+  // Frame 1: mid-stride (normal stance, slight bob up)
+  // Frame 2: right leg forward (shift right foot down)
+  // Frame 3: mid-stride (normal stance, slight bob up)
+  const bobOffset = (frame === 1 || frame === 3) ? -1 : 0;
+  const adjustedY = y - bobOffset;
+
+  if (adjustedY < 0 || adjustedY >= 48) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  // Body (same base penguin shape)
+  const isBody = localX >= 4 && localX < 28 && adjustedY >= 8 && adjustedY < 44;
+  const isHead = localX >= 8 && localX < 24 && adjustedY >= 0 && adjustedY < 16;
+  const isBelly = localX >= 10 && localX < 22 && adjustedY >= 16 && adjustedY < 40;
+  const isLeftEye = localX >= 10 && localX < 14 && adjustedY >= 6 && adjustedY < 10;
+  const isRightEye = localX >= 18 && localX < 22 && adjustedY >= 6 && adjustedY < 10;
+  const isBeak = localX >= 14 && localX < 18 && adjustedY >= 10 && adjustedY < 14;
+
+  // Animated feet per frame
+  let isFeet = false;
+  if (frame === 0) {
+    // Left foot forward, right foot back
+    isFeet = (localX >= 6 && localX < 12 && adjustedY >= 44 && adjustedY < 48) ||
+             (localX >= 20 && localX < 26 && adjustedY >= 42 && adjustedY < 46);
+  } else if (frame === 1) {
+    // Normal stance
+    isFeet = (localX >= 8 && localX < 14 && adjustedY >= 44 && adjustedY < 48) ||
+             (localX >= 18 && localX < 24 && adjustedY >= 44 && adjustedY < 48);
+  } else if (frame === 2) {
+    // Right foot forward, left foot back
+    isFeet = (localX >= 6 && localX < 12 && adjustedY >= 42 && adjustedY < 46) ||
+             (localX >= 20 && localX < 26 && adjustedY >= 44 && adjustedY < 48);
+  } else {
+    // Normal stance (same as frame 1)
+    isFeet = (localX >= 8 && localX < 14 && adjustedY >= 44 && adjustedY < 48) ||
+             (localX >= 18 && localX < 24 && adjustedY >= 44 && adjustedY < 48);
+  }
+
+  if (isLeftEye || isRightEye) {
+    return { ...COLORS.white, a: 255 };
+  }
+  if (isBeak || isFeet) {
+    return { ...COLORS.orange, a: 255 };
+  }
+  if (isBelly) {
+    return { ...COLORS.white, a: 255 };
+  }
+  if (isBody || isHead) {
+    return { ...COLORS.darkBlue, a: 255 };
+  }
+  return { r: 0, g: 0, b: 0, a: 0 };
+});
+savePNG('public/assets/sprites/player-walk-sheet.png', playerWalkBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

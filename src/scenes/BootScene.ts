@@ -20,8 +20,12 @@ export class BootScene extends Phaser.Scene {
     // Load character sprites
     this.load.image('character', 'assets/sprites/character.png');
 
-    // Load player sprite sheet (2 frames for idle animation)
+    // Load player sprite sheets (idle: 2 frames, walk: 4 frames)
     this.load.spritesheet(PLAYER_CONFIG.textureKey, PLAYER_CONFIG.assetPath, {
+      frameWidth: PLAYER_CONFIG.frameWidth,
+      frameHeight: PLAYER_CONFIG.frameHeight,
+    });
+    this.load.spritesheet(PLAYER_CONFIG.walkTextureKey, PLAYER_CONFIG.walkAssetPath, {
       frameWidth: PLAYER_CONFIG.frameWidth,
       frameHeight: PLAYER_CONFIG.frameHeight,
     });

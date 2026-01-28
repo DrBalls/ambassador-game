@@ -5,28 +5,39 @@ import { Character } from './Character';
  * Sprite sheet and animation configuration for the player
  */
 export const PLAYER_CONFIG = {
-  /** Asset key for the player sprite sheet */
+  /** Asset key for the player idle sprite sheet */
   textureKey: 'player-sheet',
   /** Path relative to public/ */
   assetPath: 'assets/sprites/player-sheet.png',
+  /** Asset key for the player walk sprite sheet */
+  walkTextureKey: 'player-walk-sheet',
+  /** Path for walk sprite sheet */
+  walkAssetPath: 'assets/sprites/player-walk-sheet.png',
   /** Frame dimensions */
   frameWidth: 32,
   frameHeight: 48,
   /** Animation keys */
   anims: {
     idle: 'player-idle',
+    walk: 'player-walk',
   },
+  /** Walk speed in pixels per second */
+  walkSpeed: 60,
 } as const;
 
 /**
  * Player - The controllable player character (Pip).
  *
  * Extends Character with:
- * - Idle animation registration and playback (2 frames, 500ms each)
- * - Facing direction tracking based on last movement
- * - Future: walking handled by US-014
+ * - Idle animation (2 frames, 500ms each)
+ * - Walk animation (4 frames, ~8 fps)
+ * - Click-to-walk movement toward a target position
+ * - Facing direction tracking based on movement
  */
 export class Player extends Character {
+  private walkTarget: { x: number; y: number } | null = null;
+  private isWalking = false;
+
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, PLAYER_CONFIG.textureKey, 0);
     this.registerAnimations();
@@ -40,7 +51,6 @@ export class Player extends Character {
   private registerAnimations(): void {
     const anims = this.scene.anims;
 
-    // Only register if not already present (e.g., after room reload)
     if (!anims.exists(PLAYER_CONFIG.anims.idle)) {
       anims.create({
         key: PLAYER_CONFIG.anims.idle,
@@ -49,14 +59,84 @@ export class Player extends Character {
           end: 1,
         }),
         frameRate: 2, // 2 fps → 500ms per frame
-        repeat: -1, // Loop forever
+        repeat: -1,
+      });
+    }
+
+    if (!anims.exists(PLAYER_CONFIG.anims.walk)) {
+      anims.create({
+        key: PLAYER_CONFIG.anims.walk,
+        frames: anims.generateFrameNumbers(PLAYER_CONFIG.walkTextureKey, {
+          start: 0,
+          end: 3,
+        }),
+        frameRate: 8, // 8 fps walk cycle
+        repeat: -1,
       });
     }
   }
 
   /**
-   * Face the direction of movement (used when walking is implemented).
-   * Updates facing based on horizontal delta.
+   * Set a walk target. The player will move toward this position each update().
+   */
+  walkTo(x: number, y: number): void {
+    this.walkTarget = { x, y };
+    if (!this.isWalking) {
+      this.isWalking = true;
+      this.playAnimation(PLAYER_CONFIG.anims.walk, false);
+    }
+    this.faceToward(x);
+  }
+
+  /**
+   * Stop walking and return to idle animation.
+   */
+  stopWalking(): void {
+    this.walkTarget = null;
+    if (this.isWalking) {
+      this.isWalking = false;
+      this.playAnimation(PLAYER_CONFIG.anims.idle, false);
+    }
+  }
+
+  /**
+   * Whether the player is currently walking.
+   */
+  getIsWalking(): boolean {
+    return this.isWalking;
+  }
+
+  /**
+   * Update movement each frame. Call from GameScene.update().
+   * Returns true if the player reached the destination this frame.
+   */
+  updateMovement(delta: number): boolean {
+    if (!this.walkTarget || !this.isWalking) return false;
+
+    const dx = this.walkTarget.x - this.getX();
+    const dy = this.walkTarget.y - this.getY();
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // How far we can move this frame
+    const step = PLAYER_CONFIG.walkSpeed * (delta / 1000);
+
+    if (distance <= step) {
+      // Arrived at destination
+      this.setPosition(this.walkTarget.x, this.walkTarget.y);
+      this.stopWalking();
+      return true;
+    }
+
+    // Move toward target
+    const nx = dx / distance;
+    const ny = dy / distance;
+    this.setPosition(this.getX() + nx * step, this.getY() + ny * step);
+    this.faceToward(this.walkTarget.x);
+    return false;
+  }
+
+  /**
+   * Face the direction of movement.
    */
   faceToward(targetX: number): void {
     if (targetX < this.getX()) {

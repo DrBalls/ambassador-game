@@ -350,4 +350,40 @@ Started: 2026-01-28
   - PLAYER_CONFIG const centralizes all player asset metadata — import in both BootScene and Player
   - flipX handles facing direction — no need for separate left/right sprite art
   - Player created AFTER loadRoom() in GameScene.create() so it renders on top of background
+- Walk sprite sheet: separate texture from idle (player-walk-sheet, 4 frames at 8fps)
+- Walk system: Player.walkTo(x,y) starts movement, Player.updateMovement(delta) per frame, Player.stopWalking() to stop
+- Walkable area: Phaser.Geom.Polygon built from room.walkableArea points; use Polygon.Contains() for hit testing
+- Click-to-walk: GameScene.handleViewportClick() checks WALK verb, viewport bounds (Y < 120), and walkable polygon
+- Boundary clamping: clampToWalkableArea() projects point onto nearest polygon edge segment for clicks outside walkable area
+- VIEWPORT_HEIGHT constant (120) defines the gameplay area above UI panels
+
+---
+
+## 2026-01-28 - US-014: Implement Click-to-Walk
+- What was implemented:
+  - Click-to-walk movement system: click in viewport with WALK verb to move Pip
+  - Player moves toward click position at 60 pixels/second using delta-time movement
+  - 4-frame walk animation sprite sheet generated (128x48, foot alternation + bob)
+  - Walk animation registered and played during movement (8fps), idle animation on stop
+  - Walkable area polygon constraint: Phaser.Geom.Polygon.Contains() for point-in-polygon testing
+  - Boundary clamping: clicks outside walkable area project to nearest polygon edge
+  - Click during walk updates destination (redirects movement)
+  - Player faces direction of movement via faceToward()
+  - Room transitions stop walking (player.stopWalking() on transition start)
+  - GameScene.update() drives per-frame movement via player.updateMovement(delta)
+- Files changed:
+  - src/entities/Player.ts (added walkTo, stopWalking, updateMovement, walk animation registration, PLAYER_CONFIG expanded)
+  - src/scenes/GameScene.ts (handleViewportClick, isPointInWalkableArea, clampToWalkableArea, walkablePolygon, update loop)
+  - src/scenes/BootScene.ts (load walk sprite sheet)
+  - scripts/generate-placeholders.js (4-frame walk animation sprite generation)
+  - public/assets/sprites/player-walk-sheet.png (new - 4-frame walk sprite sheet)
+  - prd.json (US-014 passes: true)
+- **Learnings for future iterations:**
+  - Walk animation uses a separate sprite sheet (player-walk-sheet) from idle (player-sheet) to keep frame counts independent
+  - Movement is delta-time based: `speed * (delta / 1000)` ensures consistent speed regardless of frame rate
+  - Point-in-polygon uses Phaser.Geom.Polygon.Contains() — build polygon once in loadRoom(), reuse for all clicks
+  - Boundary clamping projects point onto each polygon edge segment and picks the closest — uses parametric projection with t clamped to [0,1]
+  - handleViewportClick() checks: not transitioning, WALK verb active, Y < VIEWPORT_HEIGHT (120px)
+  - Player.playAnimation(key, false) with ignoreIfPlaying=false forces animation switch between idle↔walk
+  - Synthetic PointerEvents with `composed: true, isPrimary: true` plus full event chain (pointerdown/mousedown/pointerup/mouseup/click) DO reach Phaser's input manager in browser tests
 ---

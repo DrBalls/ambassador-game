@@ -254,7 +254,7 @@
         "Verify in browser: click various points, Pip walks to them, stops at boundaries"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
