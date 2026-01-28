@@ -141,3 +141,23 @@ Started: 2026-01-28
   - Scene events (this.scene.events.emit/on) provide decoupled communication
   - Verb bar occupies bottom 24px of 320x200 screen, leaving 176px for gameplay viewport
 ---
+
+## 2026-01-28 - US-006: Add Sentence Line Display
+- What was implemented:
+  - Created src/systems/SentenceLineSystem.ts for SCUMM-style sentence display
+  - 16px tall sentence line positioned above verb bar (at Y=160)
+  - Displays current verb text (e.g., "Walk to", "Use", "Look at")
+  - Updates to show "[verb] [target]" when hovering over hotspots
+  - Clears target when mouse leaves hotspot
+  - Uses Phaser events for decoupled communication (hotspot:hover, hotspot:leave)
+  - Added test hotspot to GameScene for verifying sentence line behavior
+- Files changed:
+  - src/systems/SentenceLineSystem.ts (new - sentence line system)
+  - src/scenes/GameScene.ts (integrated SentenceLineSystem, added test hotspot)
+- **Learnings for future iterations:**
+  - UI layout: Sentence line (16px) + Verb bar (24px) = 40px total UI height
+  - Gameplay viewport is now 320x160 (above the 40px UI area)
+  - Hotspots should emit 'hotspot:hover' with name and 'hotspot:leave' events
+  - SentenceLineSystem listens to 'verb:selected' from VerbSystem automatically
+  - VERB_DISPLAY_TEXT map in VerbSystem provides verb-specific sentence prefixes
+---
