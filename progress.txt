@@ -14,6 +14,8 @@ Started: 2026-01-28
 - Scene transitions use this.scene.start('SceneKey') to switch scenes
 - Asset paths: relative to public/ folder (e.g., 'assets/sprites/character.png')
 - Asset loading: this.load.image() in preload(), this.add.image() in create()
+- UI systems: src/systems/ directory for reusable game systems (VerbSystem, etc.)
+- UI events: Use scene.events.emit('name', data) for decoupled UI communication
 
 ---
 
@@ -118,4 +120,24 @@ Started: 2026-01-28
   - Phaser images default to center origin; use .setOrigin(0, 0) for backgrounds
   - Use this.load.image('key', 'path') in preload(), then this.add.image(x, y, 'key') in create()
   - pngjs is useful for generating simple placeholder assets programmatically
+---
+
+## 2026-01-28 - US-005: Create Verb Bar Component
+- What was implemented:
+  - Created src/systems/VerbSystem.ts with SCUMM-style verb bar
+  - 6 verb buttons: WALK, LOOK, TALK, USE, TAKE, GIVE (48x16 pixels each)
+  - Verb enum and VERB_DISPLAY_TEXT map for sentence line integration
+  - Three visual states: normal, hover, selected with color transitions
+  - Default selected verb is WALK
+  - Event emission on verb selection ('verb:selected')
+  - Updated GameScene to integrate VerbSystem and log selections
+- Files changed:
+  - src/systems/VerbSystem.ts (new - verb bar system)
+  - src/scenes/GameScene.ts (VerbSystem integration)
+- **Learnings for future iterations:**
+  - Phaser's setInteractive({ useHandCursor: true }) enables pointer cursor on game objects
+  - Use Phaser.GameObjects.Container to group related UI elements
+  - Rectangle.setFillStyle() allows dynamic color changes for hover/selection states
+  - Scene events (this.scene.events.emit/on) provide decoupled communication
+  - Verb bar occupies bottom 24px of 320x200 screen, leaving 176px for gameplay viewport
 ---

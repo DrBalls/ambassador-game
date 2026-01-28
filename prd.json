@@ -95,7 +95,7 @@
         "Verify in browser: click each verb, confirm it highlights and stays selected"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
