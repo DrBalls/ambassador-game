@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { PLAYER_CONFIG } from '../entities/Player';
-import { NPC_DEFINITIONS } from '../data/npcs';
+import { NPC_DEFINITIONS, SPEAKER_PORTRAITS } from '../data/npcs';
 
 /**
  * BootScene - Initial loading scene
@@ -37,6 +37,11 @@ export class BootScene extends Phaser.Scene {
         frameWidth: npc.frameWidth,
         frameHeight: npc.frameHeight,
       });
+    }
+
+    // Load speaker portraits for dialogue UI
+    for (const portrait of Object.values(SPEAKER_PORTRAITS)) {
+      this.load.image(portrait.key, portrait.path);
     }
 
     // Load UI elements

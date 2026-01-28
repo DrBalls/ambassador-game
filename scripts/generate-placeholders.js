@@ -281,4 +281,65 @@ const npcBubbleBuffer = createPNG(64, 48, (x, y) => {
 });
 savePNG('public/assets/sprites/npc-bubble-sheet.png', npcBubbleBuffer);
 
+// 7. Portrait: Pip (48x48) — close-up of dark blue penguin face
+const portraitPipBuffer = createPNG(48, 48, (x, y) => {
+  // Dark blue background
+  const bg = { r: 20, g: 20, b: 40 };
+
+  // Round face shape (circle centered at 24,26, radius 20)
+  const dx = x - 24;
+  const dy = y - 26;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > 22) return { ...bg, a: 255 };
+
+  // Eyes (white with dark pupils)
+  const isLeftEye = x >= 12 && x < 20 && y >= 16 && y < 24;
+  const isRightEye = x >= 28 && x < 36 && y >= 16 && y < 24;
+  const isLeftPupil = x >= 15 && x < 18 && y >= 18 && y < 22;
+  const isRightPupil = x >= 31 && x < 34 && y >= 18 && y < 22;
+
+  // Beak
+  const isBeak = x >= 19 && x < 29 && y >= 24 && y < 30;
+
+  // White belly/chin
+  const isChin = x >= 16 && x < 32 && y >= 30 && y < 42;
+
+  if (isLeftPupil || isRightPupil) return { r: 10, g: 10, b: 30, a: 255 };
+  if (isLeftEye || isRightEye) return { ...COLORS.white, a: 255 };
+  if (isBeak) return { ...COLORS.orange, a: 255 };
+  if (isChin) return { ...COLORS.white, a: 255 };
+  // Face color (dark blue)
+  return { ...COLORS.darkBlue, a: 255 };
+});
+savePNG('public/assets/portraits/pip.png', portraitPipBuffer);
+
+// 8. Portrait: Bubble (48x48) — close-up of lighter blue penguin face
+const portraitBubbleBuffer = createPNG(48, 48, (x, y) => {
+  const bg = { r: 20, g: 20, b: 40 };
+
+  const dx = x - 24;
+  const dy = y - 26;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > 22) return { ...bg, a: 255 };
+
+  // Bigger, friendlier eyes
+  const isLeftEye = x >= 10 && x < 20 && y >= 14 && y < 24;
+  const isRightEye = x >= 28 && x < 38 && y >= 14 && y < 24;
+  const isLeftPupil = x >= 14 && x < 18 && y >= 16 && y < 21;
+  const isRightPupil = x >= 32 && x < 36 && y >= 16 && y < 21;
+
+  // Beak (yellow-orange)
+  const isBeak = x >= 18 && x < 30 && y >= 24 && y < 30;
+
+  // Belly/chin
+  const isChin = x >= 14 && x < 34 && y >= 30 && y < 42;
+
+  if (isLeftPupil || isRightPupil) return { ...NPC_COLORS.pupil, a: 255 };
+  if (isLeftEye || isRightEye) return { ...NPC_COLORS.eyes, a: 255 };
+  if (isBeak) return { ...NPC_COLORS.beak, a: 255 };
+  if (isChin) return { ...NPC_COLORS.belly, a: 255 };
+  return { ...NPC_COLORS.body, a: 255 };
+});
+savePNG('public/assets/portraits/bubble.png', portraitBubbleBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

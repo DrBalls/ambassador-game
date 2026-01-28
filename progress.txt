@@ -40,6 +40,13 @@ Started: 2026-01-28
 - Sprite sheets: this.load.spritesheet() in BootScene preload(); use PLAYER_CONFIG for asset metadata
 - Animation guard: Check anims.exists(key) before anims.create() to avoid duplicate registration
 - Player access: GameScene.getPlayer() returns the Player entity
+- DialogueSystem: src/systems/DialogueSystem.ts handles dialogue box UI, typewriter, portraits, and click-to-advance
+- Dialogue events: 'dialogue:start' / 'dialogue:end' for blocking/unblocking game interaction; 'dialogue:action' for DialogueAction execution
+- Dialogue triggering: 'hotspot:action' with action='startDialogue' and data={ dialogueId } triggers DialogueSystem.startDialogue()
+- Dialogue blocking: GameScene.isDialogueActive flag blocks handleHotspotClick, handleNPCClick, handleViewportClick, and exit zone clicks
+- Speaker portraits: SPEAKER_PORTRAITS registry in src/data/npcs.ts maps speaker names to portrait texture keys + asset paths
+- Portrait loading: BootScene iterates SPEAKER_PORTRAITS to preload all portrait images
+- NPCDefinition.portraitKey / portraitPath: Each NPC carries portrait asset metadata alongside sprite sheet metadata
 
 ---
 
@@ -482,4 +489,40 @@ Started: 2026-01-28
   - NPC definitions already reference dialogueId in talk response: { action: 'startDialogue', data: { dialogueId: 'bubble-greeting' } }
   - DialogueAction.type enum covers the 4 state-change operations needed for adventure game progression
   - Conditional responses enable flag-gated dialogue branches without code changes
+---
+
+## 2026-01-28 - US-018: Render Dialogue UI
+- What was implemented:
+  - Created src/systems/DialogueSystem.ts with full dialogue box rendering
+  - Dialogue box appears at bottom of viewport (320x60px, Y=60–120) with dark background and blue border
+  - Speaker portrait on left (48x48px) loaded from SPEAKER_PORTRAITS registry
+  - Speaker name in yellow bold text above dialogue text
+  - Typewriter effect at 40 chars/second using Phaser time.addEvent() repeating timer
+  - Click-to-complete: first click on dialogue box completes typewriter instantly
+  - Click-to-advance: second click advances to next node (linear `next`) or ends dialogue (at `responses` / terminal nodes)
+  - Game interaction disabled during dialogue: isDialogueActive flag blocks viewport clicks, hotspot clicks, NPC clicks, and exit zone clicks
+  - Player walking stopped when dialogue starts
+  - Dialogue actions (setFlag, giveItem, etc.) emitted as 'dialogue:action' event on node display
+  - Generated placeholder 48x48 portrait PNGs for Pip and Bubble
+  - Added SPEAKER_PORTRAITS registry and getSpeakerPortraitKey() to src/data/npcs.ts
+  - Added portraitKey/portraitPath to NPCDefinition interface
+  - BootScene loads all portraits from SPEAKER_PORTRAITS at preload time
+- Files changed:
+  - src/systems/DialogueSystem.ts (new - dialogue box UI system)
+  - src/scenes/GameScene.ts (DialogueSystem integration, isDialogueActive blocking, dialogue:start/end listeners)
+  - src/data/npcs.ts (added portraitKey/portraitPath to NPCDefinition, SPEAKER_PORTRAITS registry, getSpeakerPortraitKey)
+  - src/scenes/BootScene.ts (portrait preloading from SPEAKER_PORTRAITS)
+  - scripts/generate-placeholders.js (portrait generation for Pip and Bubble)
+  - public/assets/portraits/pip.png (new - 48x48 Pip portrait)
+  - public/assets/portraits/bubble.png (new - 48x48 Bubble portrait)
+  - prd.json (US-018 passes: true)
+- **Learnings for future iterations:**
+  - DialogueSystem listens for 'hotspot:action' with action='startDialogue' — no direct coupling to NPC or hotspot systems needed
+  - Typewriter uses Phaser's time.addEvent with repeat count, not a per-frame update — cleaner and frame-rate independent
+  - Click handling state machine: isTypewriterComplete=false → completeTypewriter(); isTypewriterComplete=true → advanceDialogue()
+  - Dialogue box setDepth(200) ensures it renders above all game content (backgrounds, characters, hotspots)
+  - Portrait uses setDisplaySize() to scale any source image to 48x48 — no strict source size requirement
+  - Dialogue at choice nodes (responses array) currently ends — US-019 will handle rendering choices
+  - 'dialogue:action' event carries DialogueAction for GameState to process — GameState system needed in US-020/US-021
+  - isDialogueActive must be checked in ALL click handlers (hotspot, NPC, exit zone, viewport) to fully block interaction
 ---

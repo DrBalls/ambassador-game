@@ -323,7 +323,7 @@
         "Verify in browser: trigger test dialogue, see portrait, typewriter text, click to advance"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

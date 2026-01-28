@@ -4,6 +4,7 @@ import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { WalkSystem } from '../systems/WalkSystem';
+import { DialogueSystem } from '../systems/DialogueSystem';
 import { ItemDefinition } from '../data/items';
 import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
@@ -25,6 +26,7 @@ export class GameScene extends Phaser.Scene {
   private verbSystem!: VerbSystem;
   private sentenceLineSystem!: SentenceLineSystem;
   private inventorySystem!: InventorySystem;
+  private dialogueSystem!: DialogueSystem;
   private feedbackText!: Phaser.GameObjects.Text;
   private currentRoom: RoomData | null = null;
   private roomBackground: Phaser.GameObjects.Image | null = null;
@@ -32,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private exitZones: Phaser.GameObjects.Zone[] = [];
   private npcs: NPC[] = [];
   private isTransitioning = false;
+  private isDialogueActive = false;
   private player!: Player;
   private walkablePolygon: Phaser.Geom.Polygon | null = null;
   private walkSystem!: WalkSystem;
@@ -70,6 +73,18 @@ export class GameScene extends Phaser.Scene {
     this.inventorySystem = new InventorySystem(this);
     this.sentenceLineSystem = new SentenceLineSystem(this);
     this.verbSystem = new VerbSystem(this);
+
+    // Initialize dialogue system (must be after other UI systems so it renders on top)
+    this.dialogueSystem = new DialogueSystem(this);
+
+    // Listen for dialogue start/end to block/unblock game interaction
+    this.events.on('dialogue:start', () => {
+      this.isDialogueActive = true;
+      this.player.stopWalking();
+    });
+    this.events.on('dialogue:end', () => {
+      this.isDialogueActive = false;
+    });
 
     // Listen for hotspot clicks — dispatch verb action
     this.events.on('hotspot:click', (hotspotData: HotspotData) => {
@@ -135,6 +150,7 @@ export class GameScene extends Phaser.Scene {
    * Handle a hotspot click — resolve the active verb's response
    */
   private handleHotspotClick(hotspotData: HotspotData): void {
+    if (this.isDialogueActive) return;
     const verb = this.verbSystem.getSelectedVerb();
     const hotspot = this.hotspots.find(h => h.getData().id === hotspotData.id);
     if (!hotspot) return;
@@ -162,6 +178,7 @@ export class GameScene extends Phaser.Scene {
    * Handle an NPC click — resolve the active verb's response from NPC definition
    */
   private handleNPCClick(npcDef: NPCDefinition): void {
+    if (this.isDialogueActive) return;
     const verb = this.verbSystem.getSelectedVerb();
 
     // Map verb to response key (same mapping as hotspots)
@@ -209,6 +226,13 @@ export class GameScene extends Phaser.Scene {
    */
   getInventorySystem(): InventorySystem {
     return this.inventorySystem;
+  }
+
+  /**
+   * Get the dialogue system for external access
+   */
+  getDialogueSystem(): DialogueSystem {
+    return this.dialogueSystem;
   }
 
   /**
@@ -402,6 +426,7 @@ export class GameScene extends Phaser.Scene {
 
     // Click — trigger room transition if WALK verb is active
     zone.on('pointerdown', () => {
+      if (this.isDialogueActive) return;
       const verb = this.verbSystem.getSelectedVerb();
       if (verb === Verb.WALK) {
         this.transitionToRoom(exit.targetRoomId, exit.spawnPosition);
@@ -473,6 +498,7 @@ export class GameScene extends Phaser.Scene {
    */
   private handleViewportClick(pointer: Phaser.Input.Pointer): void {
     if (this.isTransitioning) return;
+    if (this.isDialogueActive) return;
 
     const verb = this.verbSystem.getSelectedVerb();
     if (verb !== Verb.WALK) return;
