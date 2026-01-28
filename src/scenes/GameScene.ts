@@ -54,6 +54,8 @@ export class GameScene extends Phaser.Scene {
 
     // Create the player character in center of viewport (bottom-center origin, so Y=100 puts feet near bottom of walkable area)
     this.player = new Player(this, GAME_WIDTH / 2, 100);
+    // Track initial player position in GameState (after loadRoom so gameState may exist)
+    // GameState will be initialized later in create(), so defer position tracking to after init
 
     // Handle click-to-walk: pointer down in the viewport area
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -79,19 +81,34 @@ export class GameScene extends Phaser.Scene {
     // Initialize dialogue system (must be after other UI systems so it renders on top)
     this.dialogueSystem = new DialogueSystem(this);
 
-    // Initialize game state manager (handles dialogue actions: setFlag, giveItem, takeItem, startQuest)
+    // Initialize game state manager (singleton, tracks room/position/inventory/flags/quests)
     this.gameState = new GameState(this);
 
-    // Listen for game state events that affect inventory
+    // Track initial room and player position in GameState
+    if (this.currentRoom) {
+      this.gameState.setCurrentRoomId(this.currentRoom.id);
+    }
+    this.gameState.setPlayerPosition(this.player.getX(), this.player.getY());
+
+    // Listen for game state events that affect inventory UI
     this.events.on('gamestate:giveItem', (item: InventoryItem) => {
-      this.inventorySystem.addItem(item);
+      // Only add to InventorySystem if it doesn't already have the item
+      // (prevents double-add when GameState.addItem triggers this event)
+      if (!this.inventorySystem.hasItem(item.id)) {
+        this.inventorySystem.addItem(item);
+      }
       this.showFeedback(`Received ${item.name}!`);
     });
     this.events.on('gamestate:takeItem', (itemId: string) => {
-      const removed = this.inventorySystem.removeItem(itemId);
-      if (removed) {
-        this.showFeedback(`Lost item.`);
+      if (this.inventorySystem.hasItem(itemId)) {
+        this.inventorySystem.removeItem(itemId);
       }
+      this.showFeedback(`Lost item.`);
+    });
+
+    // Sync GameState inventory when InventorySystem changes directly (e.g., item combinations)
+    this.events.on('inventory:changed', (items: InventoryItem[]) => {
+      this.gameState.syncInventory(items);
     });
 
     // Listen for dialogue start/end to block/unblock game interaction
@@ -158,8 +175,9 @@ export class GameScene extends Phaser.Scene {
       }
     );
 
-    // Expose inventory system globally for console testing
-    // Usage: game.scene.getScene('GameScene').inventorySystem.addItem({...})
+    // Expose systems globally for console testing
+    // Usage: window.gameState.getSnapshot(), window.gameState.setFlag('test', true), etc.
+    (window as unknown as { gameState: GameState }).gameState = this.gameState;
     (window as unknown as { testInventory: InventorySystem }).testInventory = this.inventorySystem;
   }
 
@@ -310,6 +328,11 @@ export class GameScene extends Phaser.Scene {
     this.walkSystem.clearDebug();
 
     this.currentRoom = room;
+
+    // Track room in GameState (if initialized)
+    if (this.gameState) {
+      this.gameState.setCurrentRoomId(roomId);
+    }
 
     // Render background at top-left of viewport (320x120 area)
     this.roomBackground = this.add.image(0, 0, room.background).setOrigin(0, 0);
@@ -498,6 +521,7 @@ export class GameScene extends Phaser.Scene {
 
       // Set player position to spawn point in the new room
       this.player.setPosition(spawnPosition.x, spawnPosition.y);
+      this.gameState.setPlayerPosition(spawnPosition.x, spawnPosition.y);
 
       // Fade in (500ms)
       this.cameras.main.fadeIn(500, 0, 0, 0);
@@ -610,6 +634,12 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     // Update player walking movement
+    const wasWalking = this.player.getIsWalking();
     this.player.updateMovement(delta);
+
+    // Sync player position to GameState when walking
+    if (wasWalking || this.player.getIsWalking()) {
+      this.gameState.setPlayerPosition(this.player.getX(), this.player.getY());
+    }
   }
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DialogueTree, DialogueNode, DialogueResponse } from '../data/dialogue';
 import { getDialogueTree } from '../data/dialogue';
 import { getSpeakerPortraitKey } from '../data/npcs';
+import { GameState } from './GameState';
 
 /**
  * Layout constants for the dialogue box.
@@ -69,10 +70,7 @@ export class DialogueSystem {
   private choiceTexts: Phaser.GameObjects.Text[] = [];
   private isShowingChoices = false;
 
-  // Temporary flag store for condition checking within dialogue.
-  // Flags set via dialogue actions (setFlag) are stored here until
-  // a full GameState system (US-021) is available.
-  private dialogueFlags: Map<string, boolean> = new Map();
+  // No longer needs local flag storage — delegates to GameState singleton (US-021)
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -148,13 +146,8 @@ export class DialogueSystem {
       }
     });
 
-    // Track setFlag actions so conditional choices work within dialogue.
-    // When GameState (US-021) exists, this can delegate to it instead.
-    this.scene.events.on('dialogue:action', (dialogueAction: { type: string; target: string; value?: boolean }) => {
-      if (dialogueAction.type === 'setFlag') {
-        this.dialogueFlags.set(dialogueAction.target, dialogueAction.value ?? true);
-      }
-    });
+    // Flag tracking now handled by GameState singleton (US-021).
+    // Conditions in checkCondition() delegate to GameState.getFlag().
   }
 
   /**
@@ -413,11 +406,13 @@ export class DialogueSystem {
   /**
    * Check whether a condition flag is met.
    * If no condition is specified, the check passes (unconditional).
-   * Checks the local dialogueFlags map; will delegate to GameState when available (US-021).
+   * Delegates to GameState singleton for flag lookups.
    */
   private checkCondition(condition?: string): boolean {
     if (!condition) return true;
-    return this.dialogueFlags.get(condition) === true;
+    const gs = GameState.getInstance();
+    if (!gs) return false;
+    return gs.getFlag(condition);
   }
 
   /**

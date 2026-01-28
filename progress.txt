@@ -382,9 +382,12 @@ Started: 2026-01-28
 - Dialogue choices: showChoices() renders up to 4 clickable text options; clearChoices() destroys them on selection or dialogue end
 - Dialogue conditions: DialogueResponse.condition checks dialogueFlags Map (temporary until GameState US-021); no condition = always visible
 - Dialogue choice interaction: isShowingChoices flag prevents background clicks from advancing; choices handle their own pointerdown events
-- GameState: src/systems/GameState.ts handles dialogue actions (setFlag, giveItem, takeItem, startQuest) by listening to 'dialogue:action' events
-- GameState events: 'gamestate:giveItem' (InventoryItem), 'gamestate:takeItem' (itemId), 'gamestate:flagChanged' (key, value), 'gamestate:questStarted' (questId)
-- GameState inventory coupling: GameState emits events, GameScene listens and calls InventorySystem — keeps systems decoupled
+- GameState: src/systems/GameState.ts — centralized singleton managing room, position, inventory, flags, quests
+- GameState singleton: GameState.getInstance() for access from any system; constructed in GameScene.create()
+- GameState events: 'gamestate:roomChanged' (roomId), 'gamestate:playerMoved' ({x,y}), 'gamestate:inventoryChanged' (items[]), 'gamestate:giveItem' (InventoryItem), 'gamestate:takeItem' (itemId), 'gamestate:flagChanged' (key, value), 'gamestate:questStarted' (questId), 'gamestate:questUpdated' (questId, status)
+- GameState inventory: hasItem(id), addItem(item), removeItem(id) — dual ownership with InventorySystem synced via 'inventory:changed' event
+- GameState serialization: getSnapshot() / loadSnapshot(snapshot) for save/load; GameStateSnapshot interface
+- GameState console access: window.gameState exposed for debugging (getSnapshot, setFlag, hasItem, etc.)
 - Item definitions: Add new items to ITEM_DEFINITIONS in src/data/items.ts before referencing them in dialogue giveItem actions
 
 ---
@@ -582,4 +585,37 @@ Started: 2026-01-28
   - Both GameState and DialogueSystem listen to 'dialogue:action' — GameState handles giveItem/takeItem/startQuest, DialogueSystem handles setFlag locally for mid-dialogue condition checking
   - Item IDs in dialogue giveItem actions must match keys in ITEM_DEFINITIONS or the item won't be found
   - GameState.getGameState() accessor added to GameScene for console debugging
+---
+
+## 2026-01-28 - US-021: Implement Game State Manager
+- What was implemented:
+  - Upgraded GameState to a centralized singleton managing all persistent game state
+  - Added current room ID tracking with setCurrentRoomId/getCurrentRoomId and 'gamestate:roomChanged' event
+  - Added player position tracking with setPlayerPosition/getPlayerPosition and 'gamestate:playerMoved' event
+  - Added inventory management: hasItem, addItem, removeItem with 'gamestate:inventoryChanged' event
+  - Added syncInventory() for InventorySystem to push direct changes (e.g., item combinations) back to GameState
+  - Added getSnapshot()/loadSnapshot() for save/load serialization (prepares for US-022)
+  - Added GameStateSnapshot interface for type-safe serialization
+  - Static getInstance() provides singleton access from anywhere in the app
+  - setScene() allows re-binding to a new scene (for scene restarts)
+  - Added setQuestStatus() for updating quest progress beyond just 'active'
+  - GameScene now tracks room changes and player position in GameState
+  - GameScene.update() syncs player position to GameState during walking
+  - GameScene exposes window.gameState for console debugging/verification
+  - DialogueSystem.checkCondition() now delegates to GameState.getFlag() instead of local dialogueFlags Map
+  - Removed temporary dialogueFlags Map from DialogueSystem (replaced by GameState singleton)
+  - InventorySystem 'inventory:changed' events sync back to GameState via syncInventory()
+- Files changed:
+  - src/systems/GameState.ts (major upgrade — singleton, room/position/inventory/snapshot/serialization)
+  - src/scenes/GameScene.ts (GameState integration: room tracking, position sync, inventory sync, window exposure)
+  - src/systems/DialogueSystem.ts (replaced local dialogueFlags with GameState.getFlag() delegation)
+  - prd.json (US-021 passes: true)
+- **Learnings for future iterations:**
+  - GameState is a singleton: use GameState.getInstance() for access from any system, or import from GameScene
+  - Inventory has dual ownership: InventorySystem owns the UI/interaction, GameState owns the logical state — synced via 'inventory:changed' events
+  - GameState.addItem() emits 'gamestate:giveItem' which GameScene listens to for InventorySystem.addItem() — guard against double-add with hasItem() check
+  - Player position sync happens in GameScene.update() only when walking (to avoid unnecessary event spam)
+  - GameStateSnapshot is the serialization format — use getSnapshot()/loadSnapshot() for save/load (US-022)
+  - DialogueSystem condition checking now goes through GameState singleton — no more local flag storage needed
+  - window.gameState exposed for console testing: getSnapshot(), setFlag(), hasItem(), addItem(), removeItem(), etc.
 ---
