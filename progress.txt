@@ -71,6 +71,10 @@ Started: 2026-01-28
 - Content room backgrounds: Generated in scripts/generate-placeholders.js, saved to public/assets/backgrounds/{room-id}.png
 - Default start room: GameScene.create() uses 'counting-spot' as fallback when no saved state exists
 - Exit targets can reference future rooms — exit zone renders and shows in sentence line, transition logs warning if target not yet registered
+- NPC sprite/portrait naming: npc-{id}-sheet.png for sprites, {id}.png for portraits (in respective directories)
+- Dialogue tree IDs must match dialogueId in NPC responses exactly (e.g., 'frost-colony' in both places)
+- Speaker names in dialogue nodes must match SPEAKER_PORTRAITS keys exactly (e.g., 'Commander Frost')
+- Multiple NPCs per room: CharacterPlacement[] in room data, GameScene.createNPCs() handles lifecycle
 
 ---
 
@@ -821,4 +825,43 @@ Started: 2026-01-28
   - The walkable area for counting-spot is narrower (Y: 96-116) since ice ground starts lower due to the sky/horizon being taller
   - Exit targetRoomId can reference rooms not yet created — the exit zone will show in sentence line but transition will log a warning until the target room exists
   - Default start room in GameScene.create() should be updated as real content rooms are added (was 'test-room', now 'counting-spot')
+---
+
+## 2026-01-28 - US-028: Create Colony Gathering Room
+- What was implemented:
+  - Created Colony Gathering room — the main colony area with spiral penguin formation
+  - Procedural 320x200 background with dark blue sky, jagged ice horizon, ice shelves, background penguins in spiral formation, and depth call board
+  - 3 NPCs placed in the room: Commander Frost (center, facing right), Riptide (right, facing left), Bubble (left, facing right)
+  - Commander Frost NPC definition: dark navy body, stern eyes, scar mark, broader stance
+  - Riptide NPC definition: very dark body, narrow menacing eyes, bulkier frame
+  - Generated sprite sheets (2-frame idle) and 48x48 portraits for Frost and Riptide
+  - Frost dialogue tree (frost-colony): 12 nodes with branching choices about the gathering, shore patrol markings, conditional branch for noticed_new_star flag, setFlag actions (frost_mentioned_pool, frost_told_about_markings, frost_knows_about_star, frost_assigned_pip)
+  - Riptide dialogue tree (riptide-colony): 14 nodes with branching choices, mocks Pip as "Puddle", boasts about diving, describes glowing marks, setFlag actions (argued_with_riptide, riptide_dared_pip, riptide_defies_frost)
+  - 3 hotspots: Gathering Area (central), Depth Call Board (right), Ice Shelves (left) with full verb responses
+  - 3 exits: North to Counting Spot, East to Shore Duty Station, West to Pool's Marker
+  - Room registered in ROOMS registry, background preloaded in BootScene
+  - Speaker portraits registered for Commander Frost and Riptide in SPEAKER_PORTRAITS
+- Files changed:
+  - scripts/generate-placeholders.js (added colony-gathering background, Frost/Riptide sprites + portraits)
+  - public/assets/backgrounds/colony-gathering.png (new - 320x200 colony background)
+  - public/assets/sprites/npc-frost-sheet.png (new - 2-frame Commander Frost sprite sheet)
+  - public/assets/sprites/npc-riptide-sheet.png (new - 2-frame Riptide sprite sheet)
+  - public/assets/portraits/frost.png (new - 48x48 Frost portrait)
+  - public/assets/portraits/riptide.png (new - 48x48 Riptide portrait)
+  - src/data/npcs.ts (added frost + riptide NPC definitions, speaker portraits)
+  - src/data/dialogue/frost-colony.ts (new - Commander Frost colony dialogue tree)
+  - src/data/dialogue/riptide-colony.ts (new - Riptide colony dialogue tree)
+  - src/data/dialogue/index.ts (registered frost-colony and riptide-colony dialogue trees)
+  - src/data/rooms/colony-gathering.ts (new - Colony Gathering room data)
+  - src/data/rooms/index.ts (registered colony-gathering in ROOMS)
+  - src/scenes/BootScene.ts (added bg-colony-gathering image preload)
+  - prd.json (US-028 passes: true)
+- **Learnings for future iterations:**
+  - Multiple NPCs per room work well — GameScene.createNPCs() iterates room.characters and creates all NPCs
+  - NPC definitions in src/data/npcs.ts are shared across rooms — the same NPC can appear in multiple rooms via CharacterPlacement
+  - Dialogue tree IDs must match the dialogueId referenced in NPC responses (e.g., 'frost-colony' in NPC def → frost-colony dialogue tree)
+  - Speaker portrait keys must match the speaker name in dialogue nodes exactly (e.g., 'Commander Frost' in portraits → 'Commander Frost' as speaker)
+  - Colony-gathering walkable area Y: 70-116 is wider than counting-spot's Y: 96-116 because the horizon/sky is lower
+  - Exit targets referencing future rooms (shore-duty, pools-marker) will show in sentence line but log a warning on transition until rooms are created
+  - Background penguin generation uses seeded random (seed=137) for deterministic spiral placement
 ---

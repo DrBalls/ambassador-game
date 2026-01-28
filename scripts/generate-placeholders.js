@@ -601,4 +601,299 @@ const countingSpotBuffer = createPNG(320, 200, (x, y) => {
 });
 savePNG('public/assets/backgrounds/counting-spot.png', countingSpotBuffer);
 
+// 11. Colony Gathering background: 320x200 — ice colony spiral, many penguins, ice shelves
+// The main colony area where penguins gather in spiral formation.
+const COLONY_COLORS = {
+  skyTop: { r: 20, g: 25, b: 60 },       // Dark blue-purple sky
+  skyBottom: { r: 60, g: 70, b: 120 },    // Lighter blue sky
+  iceGround: { r: 170, g: 190, b: 210 },  // Light blue-white ice ground
+  iceShadow: { r: 110, g: 130, b: 165 },  // Ice shadow
+  iceShelf: { r: 140, g: 160, b: 190 },   // Raised ice shelf
+  iceShelfEdge: { r: 90, g: 110, b: 150 },// Ice shelf edge shadow
+  penguinBody: { r: 20, g: 20, b: 40 },   // Dark penguin body (background penguins)
+  penguinBelly: { r: 200, g: 210, b: 230 },// White-ish belly
+  boardWood: { r: 90, g: 60, b: 35 },     // Depth call board wood
+  boardText: { r: 180, g: 160, b: 120 },  // Board scratched text
+};
+
+// Pre-computed background penguin positions for the colony spiral
+const colonyPenguins = [];
+seed = 137; // reset seeded random for deterministic positions
+for (let i = 0; i < 18; i++) {
+  // Spiral-ish formation
+  const angle = i * 0.6;
+  const radius = 30 + i * 6;
+  const centerX = 160;
+  const centerY = 65;
+  colonyPenguins.push({
+    x: Math.floor(centerX + Math.cos(angle) * radius * 0.8 + (seededRandom() - 0.5) * 20),
+    y: Math.floor(centerY + Math.sin(angle) * radius * 0.3 + (seededRandom() - 0.5) * 8),
+    size: seededRandom() > 0.5 ? 1 : 0, // 1 = larger (closer), 0 = smaller (further)
+  });
+}
+
+const colonyGatheringBuffer = createPNG(320, 200, (x, y) => {
+  // Sky area (top 45px)
+  if (y < 45) {
+    const t = y / 45;
+    const r = Math.floor(COLONY_COLORS.skyTop.r + (COLONY_COLORS.skyBottom.r - COLONY_COLORS.skyTop.r) * t);
+    const g = Math.floor(COLONY_COLORS.skyTop.g + (COLONY_COLORS.skyBottom.g - COLONY_COLORS.skyTop.g) * t);
+    const b = Math.floor(COLONY_COLORS.skyTop.b + (COLONY_COLORS.skyBottom.b - COLONY_COLORS.skyTop.b) * t);
+    return { r, g, b, a: 255 };
+  }
+
+  // Horizon/ice shelf area (y 45-55) — jagged ice horizon
+  if (y < 55) {
+    const jagged = Math.sin(x * 0.1) * 3 + Math.sin(x * 0.25) * 2;
+    if (y < 47 + jagged) {
+      // sky peeking through
+      const t = 0.95;
+      return { ...COLONY_COLORS.skyBottom, a: 255 };
+    }
+    return { ...COLONY_COLORS.iceShelf, a: 255 };
+  }
+
+  // Check for background penguins (small 4x6 or 6x8 shapes)
+  for (const pen of colonyPenguins) {
+    const pw = pen.size ? 6 : 4;
+    const ph = pen.size ? 8 : 6;
+    if (x >= pen.x - pw / 2 && x < pen.x + pw / 2 && y >= pen.y - ph && y < pen.y) {
+      // Upper half = dark body
+      if (y < pen.y - ph / 2) {
+        return { ...COLONY_COLORS.penguinBody, a: 255 };
+      }
+      // Lower half center = white belly
+      const bellyW = pw / 2;
+      if (x >= pen.x - bellyW / 2 && x < pen.x + bellyW / 2) {
+        return { ...COLONY_COLORS.penguinBelly, a: 255 };
+      }
+      return { ...COLONY_COLORS.penguinBody, a: 255 };
+    }
+  }
+
+  // Depth call board (wooden sign at x 220-260, y 55-75)
+  if (x >= 222 && x < 258 && y >= 56 && y < 74) {
+    // Board border
+    if (x === 222 || x === 257 || y === 56 || y === 73) {
+      return { r: 60, g: 40, b: 20, a: 255 };
+    }
+    // Board surface
+    if (y >= 58 && y < 72 && x >= 224 && x < 256) {
+      // Scratched "text" lines
+      if ((y === 60 || y === 64 || y === 68) && x >= 226 && x < 254 && x % 3 !== 0) {
+        return { ...COLONY_COLORS.boardText, a: 255 };
+      }
+      return { ...COLONY_COLORS.boardWood, a: 255 };
+    }
+    return { ...COLONY_COLORS.boardWood, a: 255 };
+  }
+  // Board post
+  if (x >= 238 && x < 242 && y >= 74 && y < 85) {
+    return { r: 70, g: 50, b: 30, a: 255 };
+  }
+
+  // Raised ice shelves (platforms) — left shelf and right shelf
+  // Left ice shelf (x 0-60, y 55-70)
+  if (x < 60 && y >= 55 && y < 70) {
+    if (y < 58) {
+      return { ...COLONY_COLORS.iceShelf, a: 255 };
+    }
+    const edgeT = (y - 58) / 12;
+    const r = Math.floor(COLONY_COLORS.iceShelf.r - edgeT * 30);
+    const g = Math.floor(COLONY_COLORS.iceShelf.g - edgeT * 30);
+    const b = Math.floor(COLONY_COLORS.iceShelf.b - edgeT * 20);
+    return { r, g, b, a: 255 };
+  }
+
+  // Right ice shelf (x 270-320, y 55-65)
+  if (x >= 270 && y >= 55 && y < 65) {
+    if (y < 57) {
+      return { ...COLONY_COLORS.iceShelf, a: 255 };
+    }
+    return { ...COLONY_COLORS.iceShelfEdge, a: 255 };
+  }
+
+  // Main ice ground
+  const noiseVal = Math.sin(x * 0.15 + y * 0.08) * 0.3 + Math.sin(x * 0.06 + y * 0.12) * 0.2;
+  const depthT = Math.max(0, (y - 55) / 145);
+  const baseR = Math.floor(COLONY_COLORS.iceShadow.r + (COLONY_COLORS.iceGround.r - COLONY_COLORS.iceShadow.r) * (1 - depthT * 0.3));
+  const baseG = Math.floor(COLONY_COLORS.iceShadow.g + (COLONY_COLORS.iceGround.g - COLONY_COLORS.iceShadow.g) * (1 - depthT * 0.3));
+  const baseB = Math.floor(COLONY_COLORS.iceShadow.b + (COLONY_COLORS.iceGround.b - COLONY_COLORS.iceShadow.b) * (1 - depthT * 0.3));
+
+  // Gathering area circle (center of room, slightly worn ice)
+  const gatherDx = x - 160;
+  const gatherDy = (y - 85) * 2; // elliptical
+  const gatherDist = Math.sqrt(gatherDx * gatherDx + gatherDy * gatherDy);
+  let extraBright = 0;
+  if (gatherDist < 60) {
+    extraBright = Math.floor((1 - gatherDist / 60) * 15);
+  }
+
+  const texR = Math.max(0, Math.min(255, Math.floor(baseR + noiseVal * 12 + extraBright)));
+  const texG = Math.max(0, Math.min(255, Math.floor(baseG + noiseVal * 12 + extraBright)));
+  const texB = Math.max(0, Math.min(255, Math.floor(baseB + noiseVal * 8 + extraBright)));
+
+  return { r: texR, g: texG, b: texB, a: 255 };
+});
+savePNG('public/assets/backgrounds/colony-gathering.png', colonyGatheringBuffer);
+
+// 12. NPC "Commander Frost" sprite sheet: 2 frames (32x48 each) → 64x48
+// Taller, stern-looking penguin with slightly darker coloring and a scar mark
+const FROST_COLORS = {
+  body: { r: 25, g: 30, b: 55 },        // Dark navy body
+  belly: { r: 190, g: 195, b: 210 },    // Gray-white belly
+  beak: { r: 200, g: 140, b: 40 },      // Darker orange beak
+  eyes: { r: 220, g: 220, b: 230 },     // Slightly cold white eyes
+  pupil: { r: 10, g: 10, b: 30 },       // Dark pupils
+  feet: { r: 200, g: 140, b: 40 },      // Darker orange feet
+  scar: { r: 160, g: 160, b: 180 },     // Scar line across face
+};
+
+const npcFrostBuffer = createPNG(64, 48, (x, y) => {
+  const frame = Math.floor(x / 32);
+  const localX = x % 32;
+  const bobOffset = frame === 1 ? 1 : 0;
+  const adjustedY = y - bobOffset;
+
+  if (adjustedY < 0 || adjustedY >= 48) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  // Slightly broader, taller-looking penguin (wider body)
+  const isBody = localX >= 2 && localX < 30 && adjustedY >= 4 && adjustedY < 44;
+  const isHead = localX >= 6 && localX < 26 && adjustedY >= 0 && adjustedY < 14;
+  const isBelly = localX >= 9 && localX < 23 && adjustedY >= 14 && adjustedY < 40;
+
+  // Smaller, stern eyes
+  const isLeftEye = localX >= 9 && localX < 13 && adjustedY >= 5 && adjustedY < 9;
+  const isRightEye = localX >= 19 && localX < 23 && adjustedY >= 5 && adjustedY < 9;
+  const isLeftPupil = localX >= 10 && localX < 12 && adjustedY >= 6 && adjustedY < 8;
+  const isRightPupil = localX >= 20 && localX < 22 && adjustedY >= 6 && adjustedY < 8;
+
+  // Beak (slightly larger, authoritative)
+  const isBeak = localX >= 12 && localX < 20 && adjustedY >= 9 && adjustedY < 13;
+
+  // Scar across left side of face
+  const isScar = adjustedY === 7 && localX >= 6 && localX < 10;
+
+  // Feet
+  const isFeet = (localX >= 6 && localX < 13 || localX >= 19 && localX < 26) && adjustedY >= 44 && adjustedY < 48;
+
+  if (isScar) return { ...FROST_COLORS.scar, a: 255 };
+  if (isLeftPupil || isRightPupil) return { ...FROST_COLORS.pupil, a: 255 };
+  if (isLeftEye || isRightEye) return { ...FROST_COLORS.eyes, a: 255 };
+  if (isBeak || isFeet) return { ...FROST_COLORS.beak, a: 255 };
+  if (isBelly) return { ...FROST_COLORS.belly, a: 255 };
+  if (isBody || isHead) return { ...FROST_COLORS.body, a: 255 };
+  return { r: 0, g: 0, b: 0, a: 0 };
+});
+savePNG('public/assets/sprites/npc-frost-sheet.png', npcFrostBuffer);
+
+// 13. Portrait: Commander Frost (48x48)
+const portraitFrostBuffer = createPNG(48, 48, (x, y) => {
+  const bg = { r: 15, g: 15, b: 35 };
+  const dx = x - 24;
+  const dy = y - 26;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > 22) return { ...bg, a: 255 };
+
+  // Stern, smaller eyes
+  const isLeftEye = x >= 11 && x < 18 && y >= 16 && y < 22;
+  const isRightEye = x >= 30 && x < 37 && y >= 16 && y < 22;
+  const isLeftPupil = x >= 13 && x < 16 && y >= 17 && y < 20;
+  const isRightPupil = x >= 32 && x < 35 && y >= 17 && y < 20;
+
+  // Scar across left cheek
+  const isScar = y >= 19 && y < 21 && x >= 6 && x < 14;
+
+  // Beak
+  const isBeak = x >= 18 && x < 30 && y >= 23 && y < 29;
+
+  // Belly/chin
+  const isChin = x >= 15 && x < 33 && y >= 30 && y < 42;
+
+  if (isScar) return { ...FROST_COLORS.scar, a: 255 };
+  if (isLeftPupil || isRightPupil) return { ...FROST_COLORS.pupil, a: 255 };
+  if (isLeftEye || isRightEye) return { ...FROST_COLORS.eyes, a: 255 };
+  if (isBeak) return { ...FROST_COLORS.beak, a: 255 };
+  if (isChin) return { ...FROST_COLORS.belly, a: 255 };
+  return { ...FROST_COLORS.body, a: 255 };
+});
+savePNG('public/assets/portraits/frost.png', portraitFrostBuffer);
+
+// 14. NPC "Riptide" sprite sheet: 2 frames (32x48 each) → 64x48
+// Larger, menacing penguin — broader body, narrow eyes, aggressive stance
+const RIPTIDE_COLORS = {
+  body: { r: 15, g: 15, b: 35 },        // Very dark body
+  belly: { r: 180, g: 180, b: 195 },    // Grayish belly
+  beak: { r: 220, g: 130, b: 30 },      // Sharp orange beak
+  eyes: { r: 240, g: 200, b: 160 },     // Yellowish eyes
+  pupil: { r: 15, g: 10, b: 10 },       // Dark red-black pupils
+  feet: { r: 220, g: 130, b: 30 },      // Orange feet
+};
+
+const npcRiptideBuffer = createPNG(64, 48, (x, y) => {
+  const frame = Math.floor(x / 32);
+  const localX = x % 32;
+  const bobOffset = frame === 1 ? 1 : 0;
+  const adjustedY = y - bobOffset;
+
+  if (adjustedY < 0 || adjustedY >= 48) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  // Broader, bulkier body
+  const isBody = localX >= 1 && localX < 31 && adjustedY >= 5 && adjustedY < 44;
+  const isHead = localX >= 5 && localX < 27 && adjustedY >= 0 && adjustedY < 14;
+  const isBelly = localX >= 10 && localX < 22 && adjustedY >= 14 && adjustedY < 38;
+
+  // Narrow, aggressive eyes
+  const isLeftEye = localX >= 8 && localX < 13 && adjustedY >= 6 && adjustedY < 9;
+  const isRightEye = localX >= 19 && localX < 24 && adjustedY >= 6 && adjustedY < 9;
+  const isLeftPupil = localX >= 10 && localX < 12 && adjustedY >= 7 && adjustedY < 9;
+  const isRightPupil = localX >= 21 && localX < 23 && adjustedY >= 7 && adjustedY < 9;
+
+  // Sharp beak
+  const isBeak = localX >= 12 && localX < 20 && adjustedY >= 10 && adjustedY < 14;
+
+  // Feet
+  const isFeet = (localX >= 5 && localX < 13 || localX >= 19 && localX < 27) && adjustedY >= 44 && adjustedY < 48;
+
+  if (isLeftPupil || isRightPupil) return { ...RIPTIDE_COLORS.pupil, a: 255 };
+  if (isLeftEye || isRightEye) return { ...RIPTIDE_COLORS.eyes, a: 255 };
+  if (isBeak || isFeet) return { ...RIPTIDE_COLORS.beak, a: 255 };
+  if (isBelly) return { ...RIPTIDE_COLORS.belly, a: 255 };
+  if (isBody || isHead) return { ...RIPTIDE_COLORS.body, a: 255 };
+  return { r: 0, g: 0, b: 0, a: 0 };
+});
+savePNG('public/assets/sprites/npc-riptide-sheet.png', npcRiptideBuffer);
+
+// 15. Portrait: Riptide (48x48)
+const portraitRiptideBuffer = createPNG(48, 48, (x, y) => {
+  const bg = { r: 10, g: 10, b: 25 };
+  const dx = x - 24;
+  const dy = y - 26;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > 22) return { ...bg, a: 255 };
+
+  // Narrow, menacing eyes
+  const isLeftEye = x >= 9 && x < 18 && y >= 17 && y < 22;
+  const isRightEye = x >= 30 && x < 39 && y >= 17 && y < 22;
+  const isLeftPupil = x >= 13 && x < 16 && y >= 18 && y < 21;
+  const isRightPupil = x >= 34 && x < 37 && y >= 18 && y < 21;
+
+  // Sharp beak
+  const isBeak = x >= 17 && x < 31 && y >= 24 && y < 30;
+
+  // Belly/chin
+  const isChin = x >= 14 && x < 34 && y >= 31 && y < 42;
+
+  if (isLeftPupil || isRightPupil) return { ...RIPTIDE_COLORS.pupil, a: 255 };
+  if (isLeftEye || isRightEye) return { ...RIPTIDE_COLORS.eyes, a: 255 };
+  if (isBeak) return { ...RIPTIDE_COLORS.beak, a: 255 };
+  if (isChin) return { ...RIPTIDE_COLORS.belly, a: 255 };
+  return { ...RIPTIDE_COLORS.body, a: 255 };
+});
+savePNG('public/assets/portraits/riptide.png', portraitRiptideBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

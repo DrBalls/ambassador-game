@@ -50,6 +50,42 @@ export const NPC_DEFINITIONS: Record<string, NPCDefinition> = {
       take: "You can't pick up another penguin!",
     },
   },
+  frost: {
+    id: 'frost',
+    name: 'Commander Frost',
+    textureKey: 'npc-frost-sheet',
+    assetPath: 'assets/sprites/npc-frost-sheet.png',
+    frameWidth: 32,
+    frameHeight: 48,
+    idleFrames: 2,
+    idleFrameRate: 2,
+    portraitKey: 'portrait-frost',
+    portraitPath: 'assets/portraits/frost.png',
+    responses: {
+      look: 'Commander Frost stands tall and broad, surveying the colony with sharp eyes. A pale scar runs across his left cheek — a souvenir from a leopard seal encounter. He commands respect without raising his voice.',
+      talk: { action: 'startDialogue', data: { dialogueId: 'frost-colony' } },
+      use: "Commander Frost gives you a withering look. You decide against it.",
+      take: "You couldn't lift Commander Frost even if you tried. He's twice your size.",
+    },
+  },
+  riptide: {
+    id: 'riptide',
+    name: 'Riptide',
+    textureKey: 'npc-riptide-sheet',
+    assetPath: 'assets/sprites/npc-riptide-sheet.png',
+    frameWidth: 32,
+    frameHeight: 48,
+    idleFrames: 2,
+    idleFrameRate: 2,
+    portraitKey: 'portrait-riptide',
+    portraitPath: 'assets/portraits/riptide.png',
+    responses: {
+      look: "Riptide is the biggest penguin in the colony. He flexes his flippers and sneers in your direction. He's never liked that you're different.",
+      talk: { action: 'startDialogue', data: { dialogueId: 'riptide-colony' } },
+      use: "Riptide shoves you away before you can even try. 'Back off, Puddle.'",
+      take: "That's... not happening. Riptide is enormous.",
+    },
+  },
 };
 
 /**
@@ -60,6 +96,8 @@ export const NPC_DEFINITIONS: Record<string, NPCDefinition> = {
 export const SPEAKER_PORTRAITS: Record<string, { key: string; path: string }> = {
   Pip: { key: 'portrait-pip', path: 'assets/portraits/pip.png' },
   Bubble: { key: 'portrait-bubble', path: 'assets/portraits/bubble.png' },
+  'Commander Frost': { key: 'portrait-frost', path: 'assets/portraits/frost.png' },
+  Riptide: { key: 'portrait-riptide', path: 'assets/portraits/riptide.png' },
 };
 
 /**

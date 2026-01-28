@@ -11,6 +11,8 @@ export type {
 
 import { DialogueTree } from './types';
 import { bubbleGreeting } from './test-dialogue';
+import { frostColony } from './frost-colony';
+import { riptideColony } from './riptide-colony';
 
 /**
  * All dialogue trees in the game, keyed by dialogue ID.
@@ -18,6 +20,8 @@ import { bubbleGreeting } from './test-dialogue';
  */
 export const DIALOGUE_TREES: Record<string, DialogueTree> = {
   [bubbleGreeting.id]: bubbleGreeting,
+  [frostColony.id]: frostColony,
+  [riptideColony.id]: riptideColony,
 };
 
 /**

@@ -494,7 +494,7 @@
         "Verify in browser: talk to all NPCs, explore all exits"
       ],
       "priority": 28,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
