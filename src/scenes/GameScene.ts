@@ -14,6 +14,7 @@ import { Verb } from '../systems/VerbSystem';
 import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
 import { NPCDefinition, getNPCDefinition } from '../data/npcs';
+import { PatternDisplay } from '../systems/PatternPuzzle';
 
 /** Height of the gameplay viewport area (above UI panels) */
 const VIEWPORT_HEIGHT = 120;
@@ -216,6 +217,13 @@ export class GameScene extends Phaser.Scene {
     (window as unknown as { gameState: GameState }).gameState = this.gameState;
     (window as unknown as { testInventory: InventorySystem }).testInventory = this.inventorySystem;
     (window as unknown as { saveSystem: SaveSystem }).saveSystem = this.saveSystem;
+    (window as unknown as { gameScene: GameScene }).gameScene = this;
+    // Test helper: window.testPattern([0,2,4]) creates and plays a PatternDisplay
+    (window as unknown as { testPattern: (indices: number[]) => PatternDisplay }).testPattern = (indices: number[]) => {
+      const display = new PatternDisplay(this, indices);
+      display.play();
+      return display;
+    };
   }
 
   /**

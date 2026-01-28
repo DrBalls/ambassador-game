@@ -152,3 +152,326 @@ export function getSacredElement(index: number): SacredElement | null {
 export function getElementFrameIndex(element: SacredElement): number {
   return element.index;
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Pattern Display Component
+// ────────────────────────────────────────────────────────────────────────
+
+/** Delay between each element reveal in the pattern sequence (ms) */
+const DISPLAY_STEP_DELAY = 500;
+
+/** Duration each tone plays (ms) */
+const TONE_DURATION = 300;
+
+/** Depth layer for pattern display UI (below dialogue at 200, above gameplay) */
+const PATTERN_DISPLAY_DEPTH = 150;
+
+/**
+ * PatternDisplay — Shows a sequence of sacred elements one at a time.
+ *
+ * Each element appears with its colored shape sprite and plays its
+ * corresponding musical tone via the Web Audio API. The sequence can
+ * be replayed on demand and supports 3, 5, or 7 element lengths.
+ *
+ * Usage:
+ *   const display = new PatternDisplay(scene, [0, 2, 4]); // 3-element sequence
+ *   display.play();             // start the sequence
+ *   display.replay();           // replay from the beginning
+ *   display.destroy();          // clean up when done
+ */
+export class PatternDisplay {
+  private scene: Phaser.Scene;
+  private sequence: SacredElement[];
+  private container: Phaser.GameObjects.Container;
+  private slotSprites: Phaser.GameObjects.Sprite[] = [];
+  private slotBackgrounds: Phaser.GameObjects.Rectangle[] = [];
+  private replayButton: Phaser.GameObjects.Container | null = null;
+  private audioContext: AudioContext | null = null;
+  private currentStep = 0;
+  private isPlaying = false;
+  private stepTimer: Phaser.Time.TimerEvent | null = null;
+  private label: Phaser.GameObjects.Text;
+
+  /**
+   * @param scene - The Phaser scene to render in
+   * @param elementIndices - Array of base-7 digit indices (0-6) forming the pattern.
+   *                         Length must be 3, 5, or 7.
+   */
+  constructor(scene: Phaser.Scene, elementIndices: number[]) {
+    this.scene = scene;
+
+    // Validate sequence length
+    if (elementIndices.length !== 3 && elementIndices.length !== 5 && elementIndices.length !== 7) {
+      console.warn(`PatternDisplay: expected 3, 5, or 7 elements, got ${elementIndices.length}`);
+    }
+
+    // Resolve element indices to SacredElement objects
+    this.sequence = elementIndices
+      .map(i => getSacredElement(i))
+      .filter((el): el is SacredElement => el !== null);
+
+    // Create the display container centered in the viewport
+    this.container = scene.add.container(160, 50);
+    this.container.setDepth(PATTERN_DISPLAY_DEPTH);
+
+    // Label above the pattern slots
+    this.label = scene.add.text(0, -24, 'Observe the pattern...', {
+      fontSize: '8px',
+      fontFamily: 'Arial',
+      color: '#c0c8e0',
+    });
+    this.label.setOrigin(0.5, 0.5);
+    this.container.add(this.label);
+
+    // Create element slots (centered row)
+    this.createSlots();
+
+    // Create replay button below the slots
+    this.createReplayButton();
+
+    // Try to initialise Web Audio (may fail before user gesture)
+    this.initAudio();
+  }
+
+  /**
+   * Create the row of slots for displaying pattern elements.
+   * Slots are empty rectangles initially; sprites are revealed during play().
+   */
+  private createSlots(): void {
+    const slotSize = 32;
+    const gap = 4;
+    const count = this.sequence.length;
+    const totalWidth = count * slotSize + (count - 1) * gap;
+    const startX = -totalWidth / 2 + slotSize / 2;
+
+    for (let i = 0; i < count; i++) {
+      const x = startX + i * (slotSize + gap);
+
+      // Slot background (dark rounded rectangle)
+      const bg = this.scene.add.rectangle(x, 0, slotSize, slotSize, 0x111122);
+      bg.setStrokeStyle(1, 0x334466);
+      this.container.add(bg);
+      this.slotBackgrounds.push(bg);
+
+      // Slot sprite (hidden initially)
+      const element = this.sequence[i]!;
+      const sprite = this.scene.add.sprite(x, 0, PATTERN_SPRITE_CONFIG.textureKey, element.index);
+      sprite.setVisible(false);
+      sprite.setAlpha(0);
+      this.container.add(sprite);
+      this.slotSprites.push(sprite);
+    }
+  }
+
+  /**
+   * Create a "Replay" button below the pattern slots.
+   */
+  private createReplayButton(): void {
+    const btnBg = this.scene.add.rectangle(0, 28, 48, 14, 0x1a3a8a);
+    btnBg.setStrokeStyle(1, 0x4488cc);
+    btnBg.setInteractive({ useHandCursor: true });
+
+    const btnText = this.scene.add.text(0, 28, 'Replay', {
+      fontSize: '7px',
+      fontFamily: 'Arial',
+      color: '#c0c8e0',
+    });
+    btnText.setOrigin(0.5, 0.5);
+
+    // Hover effects
+    btnBg.on('pointerover', () => {
+      btnBg.setFillStyle(0x2a4aaa);
+      btnText.setColor('#ffffff');
+    });
+    btnBg.on('pointerout', () => {
+      btnBg.setFillStyle(0x1a3a8a);
+      btnText.setColor('#c0c8e0');
+    });
+    btnBg.on('pointerdown', () => {
+      this.replay();
+    });
+
+    this.replayButton = this.scene.add.container(0, 0, [btnBg, btnText]);
+    this.container.add(this.replayButton);
+  }
+
+  /**
+   * Initialise the Web Audio context for tone playback.
+   */
+  private initAudio(): void {
+    try {
+      this.audioContext = new AudioContext();
+    } catch {
+      console.warn('PatternDisplay: Web Audio API not available');
+    }
+  }
+
+  /**
+   * Play a sine-wave tone at the given frequency.
+   */
+  private playTone(frequency: number): void {
+    if (!this.audioContext) {
+      this.initAudio();
+    }
+    if (!this.audioContext) return;
+
+    // Resume context if suspended (browser autoplay policy)
+    if (this.audioContext.state === 'suspended') {
+      void this.audioContext.resume();
+    }
+
+    const oscillator = this.audioContext.createOscillator();
+    const gain = this.audioContext.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+
+    // Envelope: quick fade in, sustain, fade out
+    const now = this.audioContext.currentTime;
+    const durationSec = TONE_DURATION / 1000;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+    gain.gain.linearRampToValueAtTime(0.3, now + durationSec * 0.7);
+    gain.gain.linearRampToValueAtTime(0, now + durationSec);
+
+    oscillator.connect(gain);
+    gain.connect(this.audioContext.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + durationSec);
+  }
+
+  /**
+   * Start playing the pattern sequence from the beginning.
+   * Elements are revealed one at a time with DISPLAY_STEP_DELAY between each.
+   */
+  play(): void {
+    if (this.isPlaying) return;
+
+    // Reset all slots to hidden
+    this.resetSlots();
+    this.currentStep = 0;
+    this.isPlaying = true;
+    this.label.setText('Observe the pattern...');
+
+    // Show each element in sequence
+    this.showNextElement();
+  }
+
+  /**
+   * Replay the pattern from the beginning.
+   */
+  replay(): void {
+    // Stop any in-progress playback
+    this.stopPlayback();
+    this.play();
+  }
+
+  /**
+   * Reveal the next element in the sequence.
+   */
+  private showNextElement(): void {
+    if (this.currentStep >= this.sequence.length) {
+      // Sequence complete
+      this.isPlaying = false;
+      this.label.setText('Pattern complete!');
+      this.scene.events.emit('pattern:displayComplete');
+      return;
+    }
+
+    const element = this.sequence[this.currentStep]!;
+    const sprite = this.slotSprites[this.currentStep]!;
+    const bg = this.slotBackgrounds[this.currentStep]!;
+
+    // Reveal the sprite with a quick fade-in and scale pop
+    sprite.setVisible(true);
+    sprite.setAlpha(0);
+    sprite.setScale(0.5);
+
+    this.scene.tweens.add({
+      targets: sprite,
+      alpha: 1,
+      scale: 1,
+      duration: 200,
+      ease: 'Back.easeOut',
+    });
+
+    // Highlight the slot background with the element's color
+    const rgb = element.colorRGB;
+    bg.setStrokeStyle(2, Phaser.Display.Color.GetColor(rgb.r, rgb.g, rgb.b));
+
+    // Play the corresponding tone
+    this.playTone(element.toneFrequency);
+
+    this.currentStep++;
+
+    // Schedule next element
+    this.stepTimer = this.scene.time.addEvent({
+      delay: DISPLAY_STEP_DELAY,
+      callback: () => this.showNextElement(),
+    });
+  }
+
+  /**
+   * Reset all slots to their hidden/empty state.
+   */
+  private resetSlots(): void {
+    for (const sprite of this.slotSprites) {
+      sprite.setVisible(false);
+      sprite.setAlpha(0);
+      sprite.setScale(1);
+    }
+    for (const bg of this.slotBackgrounds) {
+      bg.setStrokeStyle(1, 0x334466);
+    }
+  }
+
+  /**
+   * Stop any in-progress sequence playback.
+   */
+  private stopPlayback(): void {
+    if (this.stepTimer) {
+      this.stepTimer.destroy();
+      this.stepTimer = null;
+    }
+    this.isPlaying = false;
+  }
+
+  /**
+   * Whether the display is currently playing a sequence.
+   */
+  getIsPlaying(): boolean {
+    return this.isPlaying;
+  }
+
+  /**
+   * Get the sequence of elements being displayed.
+   */
+  getSequence(): readonly SacredElement[] {
+    return this.sequence;
+  }
+
+  /**
+   * Show or hide the entire display.
+   */
+  setVisible(visible: boolean): void {
+    this.container.setVisible(visible);
+  }
+
+  /**
+   * Clean up all game objects and audio resources.
+   */
+  destroy(): void {
+    this.stopPlayback();
+
+    if (this.audioContext) {
+      void this.audioContext.close();
+      this.audioContext = null;
+    }
+
+    this.container.destroy();
+    this.slotSprites = [];
+    this.slotBackgrounds = [];
+    this.replayButton = null;
+  }
+}

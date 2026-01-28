@@ -52,6 +52,13 @@ Started: 2026-01-28
 - Pattern element data: SacredElement includes index, color, tone, shape, colorHex, colorRGB, toneFrequency
 - Pattern enums: PatternColor, PatternTone, PatternShape for type-safe puzzle sequences
 - Pattern lookups: getSacredElement(index) returns element by base-7 digit, getElementFrameIndex(element) returns sprite frame
+- PatternDisplay: class in src/systems/PatternPuzzle.ts — shows sequence of sacred elements one at a time with tones
+- PatternDisplay constructor: new PatternDisplay(scene, elementIndices[]) — indices are base-7 digits (0-6)
+- PatternDisplay playback: play() starts sequence, replay() restarts, each element revealed with 500ms delay and Back.easeOut tween
+- PatternDisplay audio: Web Audio API oscillator tones at each element's toneFrequency, with gain envelope (300ms duration)
+- PatternDisplay events: 'pattern:displayComplete' emitted on scene.events when full sequence finishes playing
+- PatternDisplay depth: container at depth 150 (below dialogue at 200, above gameplay)
+- Console test helper: window.testPattern([0,2,4]) creates and plays a PatternDisplay in GameScene
 
 ---
 
@@ -716,4 +723,32 @@ Started: 2026-01-28
   - Polygon shapes use -Math.PI/2 rotation to point upward (standard math orientation has 0 pointing right)
   - PatternColor, PatternTone, PatternShape enums provide type safety for pattern sequences
   - getSacredElement(index) and getElementFrameIndex(element) are the primary lookup/rendering functions
+---
+
+## 2026-01-28 - US-025: Create Pattern Display Component
+- What was implemented:
+  - Added PatternDisplay class to src/systems/PatternPuzzle.ts
+  - Sequential element display: shapes revealed one at a time with 500ms delay between each
+  - Each shape animates in with scale pop (Back.easeOut) and fade-in tween (200ms)
+  - Slot borders highlight with the element's color when revealed
+  - Web Audio API tone playback: sine wave oscillator at each element's toneFrequency (300ms with gain envelope)
+  - "Observe the pattern..." / "Pattern complete!" label above slots
+  - Replay button below slots with hover effects; calls replay() which resets and re-plays from beginning
+  - Supports 3, 5, or 7 element sequences (validates in constructor)
+  - 'pattern:displayComplete' event emitted on scene when sequence finishes
+  - Container-based architecture at depth 150 (above gameplay, below dialogue at 200)
+  - setVisible() and destroy() methods for lifecycle management
+  - Added window.testPattern() console helper in GameScene for testing
+  - Browser verified: 3-element and 5-element patterns display correctly with colored shapes and borders
+- Files changed:
+  - src/systems/PatternPuzzle.ts (added PatternDisplay class with audio, animation, and replay)
+  - src/scenes/GameScene.ts (imported PatternDisplay, added window.testPattern and window.gameScene helpers)
+  - prd.json (US-025 passes: true)
+- **Learnings for future iterations:**
+  - Web Audio AudioContext may be suspended until user gesture — use audioContext.resume() before playing
+  - Phaser Container groups all child objects — setVisible/destroy on container affects all children
+  - Back.easeOut tween creates a satisfying "pop" effect for element reveals
+  - Oscillator with gain envelope (ramp up 20ms → sustain → ramp down) avoids click artifacts
+  - PatternDisplay is self-contained — owns its own AudioContext, container, sprites, and cleanup
+  - window.testPattern() helper allows easy console testing without additional setup
 ---
