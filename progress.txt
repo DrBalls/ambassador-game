@@ -31,6 +31,9 @@ Started: 2026-01-28
 - Hotspot events: 'hotspot:hover' (name), 'hotspot:leave', 'hotspot:click' (HotspotData), 'hotspot:action' (action, data)
 - Hotspot lifecycle: GameScene.loadRoom() creates Hotspot entities; clearHotspots() destroys them on room change
 - Verb-to-response mapping: VERB_TO_RESPONSE_KEY in Hotspot.ts maps Verb enum to HotspotResponses keys
+- Exit zones: Created separately from hotspots in GameScene; emit hotspot:hover/leave events for sentence line
+- Room transitions: transitionToRoom() uses camera.fadeOut(500) → loadRoom → camera.fadeIn(500) with isTransitioning guard
+- Camera fade events: 'camerafadeoutcomplete' and 'camerafadeincomplete' for chaining transition steps
 
 ---
 
@@ -286,4 +289,28 @@ Started: 2026-01-28
   - Hotspots are created after loadRoom() and destroyed on clearHotspots() — lifecycle matches room transitions
   - The GIVE verb has no dedicated response key; it falls back to 'look' in the mapping
   - Feedback text at 8px is readable when game scales to 3x (24px effective)
+---
+
+## 2026-01-28 - US-012: Add Room Exits
+- What was implemented:
+  - Exits are special interactive zones at room edges, created from ExitData in room definitions
+  - Exit zones emit hotspot:hover/leave events so the sentence line shows exit names (e.g., "Walk to Second Test Room")
+  - Clicking an exit with WALK verb triggers transitionToRoom() — fade out (500ms), load new room, fade in (500ms)
+  - Non-WALK verbs on exits show feedback text ("You can walk to [name].")
+  - isTransitioning flag prevents double-click during animation
+  - Created test-room-2 with a north exit back to test-room for bidirectional navigation testing
+  - Updated room registry (index.ts) to include test-room-2
+  - Player spawn position logged on transition (actual player entity coming in US-013/US-014)
+- Files changed:
+  - src/scenes/GameScene.ts (exit zone creation, fade transition logic, clearExitZones)
+  - src/data/rooms/test-room-2.ts (new - second test room with north exit)
+  - src/data/rooms/test-room.ts (updated exit target to test-room-2)
+  - src/data/rooms/index.ts (registered test-room-2 in ROOMS)
+- **Learnings for future iterations:**
+  - Phaser camera.fadeOut/fadeIn applies to the entire camera view including UI — use 0,0,0 (black) for Sierra-style transitions
+  - camerafadeoutcomplete/camerafadeincomplete events allow chaining without timers
+  - Exit zones must be cleared on room change (clearExitZones) alongside clearHotspots
+  - Exits are separate from hotspots — they don't go through Hotspot entity or hotspot:click events
+  - isTransitioning guard is essential — without it, rapid clicks queue multiple room loads
+  - Browser testing with Playwright requires native page.mouse.click() — synthetic PointerEvent dispatches don't reach Phaser's input manager
 ---

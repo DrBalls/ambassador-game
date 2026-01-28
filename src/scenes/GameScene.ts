@@ -4,8 +4,9 @@ import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { ItemDefinition } from '../data/items';
-import { RoomData, HotspotData, HotspotCallback, getRoom } from '../data/rooms';
+import { RoomData, HotspotData, HotspotCallback, ExitData, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
+import { Verb } from '../systems/VerbSystem';
 
 /**
  * GameScene - Main gameplay container
@@ -21,6 +22,8 @@ export class GameScene extends Phaser.Scene {
   private currentRoom: RoomData | null = null;
   private roomBackground: Phaser.GameObjects.Image | null = null;
   private hotspots: Hotspot[] = [];
+  private exitZones: Phaser.GameObjects.Zone[] = [];
+  private isTransitioning = false;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -184,8 +187,9 @@ export class GameScene extends Phaser.Scene {
       this.roomBackground = null;
     }
 
-    // Clear previous hotspots
+    // Clear previous hotspots and exit zones
     this.clearHotspots();
+    this.clearExitZones();
 
     this.currentRoom = room;
 
@@ -196,6 +200,9 @@ export class GameScene extends Phaser.Scene {
 
     // Create hotspot entities from room data
     this.createHotspots(room);
+
+    // Create exit zones from room data
+    this.createExitZones(room);
 
     console.log(`Loaded room: ${room.name} (${room.id})`);
   }
@@ -218,6 +225,122 @@ export class GameScene extends Phaser.Scene {
       hotspot.destroy();
     }
     this.hotspots = [];
+  }
+
+  /**
+   * Create interactive exit zones from room data.
+   * Exits behave like hotspots: they show their name in the sentence line on hover
+   * and trigger a room transition when clicked with the WALK verb.
+   */
+  private createExitZones(room: RoomData): void {
+    for (const exit of room.exits) {
+      const zone = this.createExitZone(exit);
+      this.exitZones.push(zone);
+    }
+  }
+
+  /**
+   * Create a single exit zone with interactive events
+   */
+  private createExitZone(exit: ExitData): Phaser.GameObjects.Zone {
+    const { bounds } = exit;
+    let zone: Phaser.GameObjects.Zone;
+
+    if (bounds.type === 'rect') {
+      zone = this.add.zone(
+        bounds.x + bounds.width / 2,
+        bounds.y + bounds.height / 2,
+        bounds.width,
+        bounds.height
+      );
+      zone.setInteractive({ useHandCursor: true });
+    } else {
+      // Polygon exit bounds
+      const { points } = bounds;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of points) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const width = maxX - minX;
+      const height = maxY - minY;
+      zone = this.add.zone(minX + width / 2, minY + height / 2, width, height);
+
+      const localPoints = points.map(p => new Phaser.Geom.Point(p.x - minX, p.y - minY));
+      const polygon = new Phaser.Geom.Polygon(localPoints);
+      zone.setInteractive({
+        hitArea: polygon,
+        hitAreaCallback: Phaser.Geom.Polygon.Contains,
+        useHandCursor: true,
+      });
+    }
+
+    // Hover events — show exit name in sentence line
+    zone.on('pointerover', () => {
+      this.events.emit('hotspot:hover', exit.name);
+    });
+    zone.on('pointerout', () => {
+      this.events.emit('hotspot:leave');
+    });
+
+    // Click — trigger room transition if WALK verb is active
+    zone.on('pointerdown', () => {
+      const verb = this.verbSystem.getSelectedVerb();
+      if (verb === Verb.WALK) {
+        this.transitionToRoom(exit.targetRoomId, exit.spawnPosition);
+      } else {
+        this.showFeedback(`You can walk to ${exit.name}.`);
+      }
+    });
+
+    return zone;
+  }
+
+  /**
+   * Destroy all current exit zones
+   */
+  private clearExitZones(): void {
+    for (const zone of this.exitZones) {
+      zone.removeAllListeners();
+      zone.destroy();
+    }
+    this.exitZones = [];
+  }
+
+  /**
+   * Transition to a new room with a fade out/in effect.
+   * Fade out (0.5s) → load new room → fade in (0.5s).
+   */
+  private transitionToRoom(targetRoomId: string, spawnPosition: { x: number; y: number }): void {
+    if (this.isTransitioning) return;
+
+    const targetRoom = getRoom(targetRoomId);
+    if (!targetRoom) {
+      console.warn(`Exit target room not found: ${targetRoomId}`);
+      return;
+    }
+
+    this.isTransitioning = true;
+
+    // Fade out (500ms)
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      // Load the new room (clears old background, hotspots, exit zones)
+      this.loadRoom(targetRoomId);
+
+      // Set player position to spawn point (future: move actual player entity)
+      console.log(`Player spawns at (${spawnPosition.x}, ${spawnPosition.y})`);
+
+      // Fade in (500ms)
+      this.cameras.main.fadeIn(500, 0, 0, 0);
+
+      this.cameras.main.once('camerafadeincomplete', () => {
+        this.isTransitioning = false;
+      });
+    });
   }
 
   /**

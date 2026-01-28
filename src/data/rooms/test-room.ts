@@ -56,7 +56,7 @@ export const TEST_ROOM: RoomData = {
   exits: [
     {
       id: 'exit-south',
-      targetRoomId: 'colony-gathering',
+      targetRoomId: 'test-room-2',
       spawnPosition: { x: 160, y: 48 },
       bounds: {
         type: 'rect',
@@ -65,7 +65,7 @@ export const TEST_ROOM: RoomData = {
         width: 80,
         height: 8,
       },
-      name: 'Colony Gathering',
+      name: 'Second Test Room',
     },
   ],
   characters: [

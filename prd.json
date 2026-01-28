@@ -218,7 +218,7 @@
         "Verify in browser: walk to exit, see fade transition, appear in new room at correct position"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

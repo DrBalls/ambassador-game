@@ -1,5 +1,6 @@
 import { RoomData } from './types';
 import { TEST_ROOM } from './test-room';
+import { TEST_ROOM_2 } from './test-room-2';
 
 export type { RoomData } from './types';
 export type {
@@ -21,6 +22,7 @@ export type {
  */
 export const ROOMS: Record<string, RoomData> = {
   [TEST_ROOM.id]: TEST_ROOM,
+  [TEST_ROOM_2.id]: TEST_ROOM_2,
 };
 
 /**
