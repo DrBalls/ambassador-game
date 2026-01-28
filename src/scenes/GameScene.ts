@@ -4,7 +4,8 @@ import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { ItemDefinition } from '../data/items';
-import { RoomData, getRoom } from '../data/rooms';
+import { RoomData, HotspotData, HotspotCallback, getRoom } from '../data/rooms';
+import { Hotspot } from '../entities/Hotspot';
 
 /**
  * GameScene - Main gameplay container
@@ -19,6 +20,7 @@ export class GameScene extends Phaser.Scene {
   private feedbackText!: Phaser.GameObjects.Text;
   private currentRoom: RoomData | null = null;
   private roomBackground: Phaser.GameObjects.Image | null = null;
+  private hotspots: Hotspot[] = [];
 
   constructor() {
     super({ key: 'GameScene' });
@@ -42,8 +44,10 @@ export class GameScene extends Phaser.Scene {
     this.sentenceLineSystem = new SentenceLineSystem(this);
     this.verbSystem = new VerbSystem(this);
 
-    // Create a test hotspot for verifying sentence line behavior
-    this.createTestHotspot();
+    // Listen for hotspot clicks — dispatch verb action
+    this.events.on('hotspot:click', (hotspotData: HotspotData) => {
+      this.handleHotspotClick(hotspotData);
+    });
 
     // Listen for verb selection events (useful for debugging)
     this.events.on('verb:selected', (verb: string) => {
@@ -96,37 +100,30 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Create a test hotspot to verify sentence line hover behavior
+   * Handle a hotspot click — resolve the active verb's response
    */
-  private createTestHotspot(): void {
-    // Create a visible test hotspot (red rectangle)
-    // Positioned in the viewport area (0-120px height)
-    const hotspot = this.add.rectangle(
-      80,
-      50,
-      48,
-      32,
-      0x994444,
-      0.5 // Semi-transparent
-    );
-    hotspot.setInteractive({ useHandCursor: true });
+  private handleHotspotClick(hotspotData: HotspotData): void {
+    const verb = this.verbSystem.getSelectedVerb();
+    const hotspot = this.hotspots.find(h => h.getData().id === hotspotData.id);
+    if (!hotspot) return;
 
-    // Emit events on hover/leave for the sentence line system
-    hotspot.on('pointerover', () => {
-      this.events.emit('hotspot:hover', 'Test Object');
-    });
+    const response = hotspot.getResponse(verb);
 
-    hotspot.on('pointerout', () => {
-      this.events.emit('hotspot:leave');
-    });
+    if (!response) {
+      // No specific response defined for this verb
+      this.showFeedback("Nothing happens.");
+      return;
+    }
 
-    // Add a label so it's clear what this is
-    const label = this.add.text(80, 50, 'Test', {
-      fontSize: '6px',
-      fontFamily: 'Arial',
-      color: '#ffffff',
-    });
-    label.setOrigin(0.5, 0.5);
+    if (typeof response === 'string') {
+      // Text response — show as feedback
+      this.showFeedback(response);
+    } else {
+      // Callback response — emit event with action data
+      const callback = response as HotspotCallback;
+      this.events.emit('hotspot:action', callback.action, callback.data);
+      console.log(`Hotspot action: ${callback.action}`, callback.data);
+    }
   }
 
   /**
@@ -187,6 +184,9 @@ export class GameScene extends Phaser.Scene {
       this.roomBackground = null;
     }
 
+    // Clear previous hotspots
+    this.clearHotspots();
+
     this.currentRoom = room;
 
     // Render background at top-left of viewport (320x120 area)
@@ -194,7 +194,30 @@ export class GameScene extends Phaser.Scene {
     // Ensure background renders behind everything else
     this.roomBackground.setDepth(-1);
 
+    // Create hotspot entities from room data
+    this.createHotspots(room);
+
     console.log(`Loaded room: ${room.name} (${room.id})`);
+  }
+
+  /**
+   * Create Hotspot entities from room data
+   */
+  private createHotspots(room: RoomData): void {
+    for (const hotspotData of room.hotspots) {
+      const hotspot = new Hotspot(this, hotspotData);
+      this.hotspots.push(hotspot);
+    }
+  }
+
+  /**
+   * Destroy all current hotspot entities
+   */
+  private clearHotspots(): void {
+    for (const hotspot of this.hotspots) {
+      hotspot.destroy();
+    }
+    this.hotspots = [];
   }
 
   /**

@@ -27,6 +27,10 @@ Started: 2026-01-28
 - Room accessor: GameScene.getCurrentRoom() returns current RoomData or null
 - Hotspot bounds: Use 'rect' (x,y,width,height) or 'polygon' (points array) for collision shapes
 - Hotspot responses: Per-verb responses (look/use/take/talk/walk) — string for text, HotspotCallback for actions
+- Hotspot entities: src/entities/Hotspot.ts wraps HotspotData into Phaser Zone with interactive hit area
+- Hotspot events: 'hotspot:hover' (name), 'hotspot:leave', 'hotspot:click' (HotspotData), 'hotspot:action' (action, data)
+- Hotspot lifecycle: GameScene.loadRoom() creates Hotspot entities; clearHotspots() destroys them on room change
+- Verb-to-response mapping: VERB_TO_RESPONSE_KEY in Hotspot.ts maps Verb enum to HotspotResponses keys
 
 ---
 
@@ -257,4 +261,29 @@ Started: 2026-01-28
   - `loadRoom()` destroys old background before creating new one — important for room transitions
   - Room background uses the `background` key from RoomData which maps to a preloaded asset
   - Future room transitions (US-012) will need to preload new room backgrounds if not already cached
+---
+
+## 2026-01-28 - US-011: Implement Hotspot System
+- What was implemented:
+  - Created src/entities/Hotspot.ts class wrapping HotspotData into interactive Phaser Zones
+  - Supports both rectangular and polygon hit areas using Phaser.Geom.Polygon.Contains
+  - Mouse hover over hotspot emits 'hotspot:hover' (name shows in sentence line) and changes cursor
+  - Mouse leave emits 'hotspot:leave' (clears sentence line target)
+  - Click emits 'hotspot:click' with HotspotData, triggering verb-specific response
+  - VERB_TO_RESPONSE_KEY maps Verb enum to HotspotResponses keys (look/use/take/talk/walk)
+  - Text responses shown via existing showFeedback(); callback responses emit 'hotspot:action'
+  - GameScene.loadRoom() now creates Hotspot entities from room data
+  - GameScene.clearHotspots() destroys all hotspot entities on room change
+  - Removed old createTestHotspot() — replaced by data-driven hotspot creation
+  - Added handleHotspotClick() method to GameScene for verb dispatch
+- Files changed:
+  - src/entities/Hotspot.ts (new - Hotspot entity class)
+  - src/scenes/GameScene.ts (hotspot integration, click handler, removed test hotspot)
+- **Learnings for future iterations:**
+  - Phaser Zones are invisible game objects perfect for hit areas — no visual needed
+  - For polygon zones, translate points to local coords (subtract bounding box min) for hit area
+  - pointerover/pointerout/pointerdown all work on Zones with setInteractive()
+  - Hotspots are created after loadRoom() and destroyed on clearHotspots() — lifecycle matches room transitions
+  - The GIVE verb has no dedicated response key; it falls back to 'look' in the mapping
+  - Feedback text at 8px is readable when game scales to 3x (24px effective)
 ---

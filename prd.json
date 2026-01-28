@@ -201,7 +201,7 @@
         "Verify in browser: hover test hotspot, see name. Click with LOOK, see description text"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
