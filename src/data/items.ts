@@ -84,6 +84,12 @@ export const ITEM_DEFINITIONS: Record<string, ItemDefinition> = {
     description: 'An ice lens mounted in an abalone shell. It catches and directs light beautifully.',
     icon: 'item-signal-mirror',
   },
+  'lucky-shell': {
+    id: 'lucky-shell',
+    name: 'Lucky Shell',
+    description: "A small pink shell from Bubble. She says it brings good luck at colony meetings.",
+    icon: 'item-lucky-shell',
+  },
 };
 
 /**

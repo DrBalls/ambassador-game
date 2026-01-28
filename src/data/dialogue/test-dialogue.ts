@@ -78,7 +78,11 @@ export const bubbleGreeting: DialogueTree = {
     'go-to-meeting': {
       id: 'go-to-meeting',
       speaker: 'Bubble',
-      text: "Come on, let's hurry! Commander Frost doesn't like it when we're late.",
+      text: "Come on, let's hurry! Oh, here — take this lucky shell. You'll need it at the meeting!",
+      action: {
+        type: 'giveItem',
+        target: 'lucky-shell',
+      },
     },
 
     'stars-response': {

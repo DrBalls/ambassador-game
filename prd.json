@@ -356,7 +356,7 @@
         "Verify in browser: dialogue gives item, item appears in inventory"
       ],
       "priority": 20,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

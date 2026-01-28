@@ -382,6 +382,10 @@ Started: 2026-01-28
 - Dialogue choices: showChoices() renders up to 4 clickable text options; clearChoices() destroys them on selection or dialogue end
 - Dialogue conditions: DialogueResponse.condition checks dialogueFlags Map (temporary until GameState US-021); no condition = always visible
 - Dialogue choice interaction: isShowingChoices flag prevents background clicks from advancing; choices handle their own pointerdown events
+- GameState: src/systems/GameState.ts handles dialogue actions (setFlag, giveItem, takeItem, startQuest) by listening to 'dialogue:action' events
+- GameState events: 'gamestate:giveItem' (InventoryItem), 'gamestate:takeItem' (itemId), 'gamestate:flagChanged' (key, value), 'gamestate:questStarted' (questId)
+- GameState inventory coupling: GameState emits events, GameScene listens and calls InventorySystem — keeps systems decoupled
+- Item definitions: Add new items to ITEM_DEFINITIONS in src/data/items.ts before referencing them in dialogue giveItem actions
 
 ---
 
@@ -551,4 +555,31 @@ Started: 2026-01-28
   - dialogue:action events with type 'setFlag' are consumed locally so flags set mid-dialogue can gate later conditional choices in the same conversation
   - Choice layout: startY = DIALOGUE_BOX.Y + 6, lineHeight = 12px, fits up to 4 choices in the 60px dialogue box
   - Phaser Text.setInteractive({ useHandCursor: true }) + pointerover/pointerout/pointerdown provides clean hover+click for choice text
+---
+
+## 2026-01-28 - US-020: Add Dialogue Actions
+- What was implemented:
+  - Created src/systems/GameState.ts for centralized game state (flags, quests) and dialogue action execution
+  - GameState listens for 'dialogue:action' events and dispatches to handlers: setFlag, giveItem, takeItem, startQuest
+  - setFlag stores boolean flags in a Map with 'gamestate:flagChanged' event emission
+  - giveItem looks up ItemDefinition by ID and emits 'gamestate:giveItem' event for InventorySystem
+  - takeItem emits 'gamestate:takeItem' event with item ID for InventorySystem
+  - startQuest records quest as 'active' in quests Map with 'gamestate:questStarted' event
+  - GameScene wires up 'gamestate:giveItem' → inventorySystem.addItem() and 'gamestate:takeItem' → inventorySystem.removeItem()
+  - GameScene shows feedback text ("Received [item]!") on giveItem, ("Lost item.") on takeItem
+  - Added 'lucky-shell' test item to ITEM_DEFINITIONS
+  - Updated test dialogue go-to-meeting node to include giveItem action for 'lucky-shell'
+  - No changes needed to DialogueSystem — it already emits 'dialogue:action' events on node display
+- Files changed:
+  - src/systems/GameState.ts (new - game state manager with dialogue action execution)
+  - src/scenes/GameScene.ts (added GameState integration, gamestate:giveItem/takeItem listeners, getGameState accessor)
+  - src/data/items.ts (added 'lucky-shell' item definition)
+  - src/data/dialogue/test-dialogue.ts (added giveItem action to go-to-meeting node)
+  - prd.json (US-020 passes: true)
+- **Learnings for future iterations:**
+  - GameState communicates with InventorySystem via events (gamestate:giveItem, gamestate:takeItem) — not direct references — following the same decoupling pattern used throughout the codebase
+  - DialogueSystem already emits 'dialogue:action' events in displayNode() — GameState just needs to listen for them
+  - Both GameState and DialogueSystem listen to 'dialogue:action' — GameState handles giveItem/takeItem/startQuest, DialogueSystem handles setFlag locally for mid-dialogue condition checking
+  - Item IDs in dialogue giveItem actions must match keys in ITEM_DEFINITIONS or the item won't be found
+  - GameState.getGameState() accessor added to GameScene for console debugging
 ---

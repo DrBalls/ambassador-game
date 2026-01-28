@@ -5,6 +5,7 @@ import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { WalkSystem } from '../systems/WalkSystem';
 import { DialogueSystem } from '../systems/DialogueSystem';
+import { GameState } from '../systems/GameState';
 import { ItemDefinition } from '../data/items';
 import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
@@ -27,6 +28,7 @@ export class GameScene extends Phaser.Scene {
   private sentenceLineSystem!: SentenceLineSystem;
   private inventorySystem!: InventorySystem;
   private dialogueSystem!: DialogueSystem;
+  private gameState!: GameState;
   private feedbackText!: Phaser.GameObjects.Text;
   private currentRoom: RoomData | null = null;
   private roomBackground: Phaser.GameObjects.Image | null = null;
@@ -76,6 +78,21 @@ export class GameScene extends Phaser.Scene {
 
     // Initialize dialogue system (must be after other UI systems so it renders on top)
     this.dialogueSystem = new DialogueSystem(this);
+
+    // Initialize game state manager (handles dialogue actions: setFlag, giveItem, takeItem, startQuest)
+    this.gameState = new GameState(this);
+
+    // Listen for game state events that affect inventory
+    this.events.on('gamestate:giveItem', (item: InventoryItem) => {
+      this.inventorySystem.addItem(item);
+      this.showFeedback(`Received ${item.name}!`);
+    });
+    this.events.on('gamestate:takeItem', (itemId: string) => {
+      const removed = this.inventorySystem.removeItem(itemId);
+      if (removed) {
+        this.showFeedback(`Lost item.`);
+      }
+    });
 
     // Listen for dialogue start/end to block/unblock game interaction
     this.events.on('dialogue:start', () => {
@@ -233,6 +250,13 @@ export class GameScene extends Phaser.Scene {
    */
   getDialogueSystem(): DialogueSystem {
     return this.dialogueSystem;
+  }
+
+  /**
+   * Get the game state manager for external access
+   */
+  getGameState(): GameState {
+    return this.gameState;
   }
 
   /**
