@@ -9,6 +9,8 @@ Started: 2026-01-28
 - Pattern puzzles use 7 elements (colors, tones, shapes) representing base-7 mathematics
 - No player death or dead ends (LucasArts style)
 - Source novel: the_smallest_ambassador_rev7.md
+- Scenes are separate files in src/scenes/ importing from src/constants.ts
+- Scene transitions use this.scene.start('SceneKey') to switch scenes
 
 ---
 
@@ -27,4 +29,46 @@ Started: 2026-01-28
   - Phase 8: Act 1 Content (US-027 to US-030)
   - Phase 9: Polish and Menus (US-031 to US-033)
 - **Next:** Start with US-001 (Initialize Phaser 3 Project)
+---
+
+## 2026-01-28 - US-001: Initialize Phaser 3 Project
+- What was implemented:
+  - Phaser 3.80 + TypeScript + Vite project scaffold
+  - 320x200 native resolution with 4x integer scaling (1280x800 display)
+  - Pixel-perfect rendering: pixelArt: true, roundPixels: true, antialias: false
+  - CSS image-rendering: pixelated for canvas
+  - BootScene placeholder with title text and dark blue background
+  - TypeScript strict mode with extra checks (noUncheckedIndexedAccess)
+- Files changed:
+  - index.html (game container with pixel-perfect CSS)
+  - package.json (Phaser 3.80 dependency)
+  - tsconfig.json (strict mode)
+  - vite.config.ts (build config)
+  - src/main.ts (Phaser game config and BootScene)
+- **Learnings for future iterations:**
+  - Phaser's Scale.FIT with zoom factor handles integer scaling well
+  - Both Phaser render config AND CSS image-rendering needed for crisp pixels
+  - BootScene defined inline in main.ts - future scenes will be separate files
+---
+
+## 2026-01-28 - US-002: Create Scene Structure
+- What was implemented:
+  - Extracted BootScene to src/scenes/BootScene.ts with asset preloading structure
+  - Created MenuScene at src/scenes/MenuScene.ts with title and "Click to Start" text
+  - Created GameScene at src/scenes/GameScene.ts as main gameplay container
+  - Created src/constants.ts for shared game dimensions (GAME_WIDTH, GAME_HEIGHT, SCALE_FACTOR)
+  - BootScene transitions to MenuScene after 1 second using this.time.delayedCall
+  - MenuScene transitions to GameScene on click using this.input.once('pointerdown')
+  - Added pulsing animation to "Click to Start" text using Phaser tweens
+- Files changed:
+  - src/main.ts (imports external scenes, registers all three in config)
+  - src/constants.ts (new - shared game dimensions)
+  - src/scenes/BootScene.ts (new - loading screen with transition)
+  - src/scenes/MenuScene.ts (new - title screen with click to start)
+  - src/scenes/GameScene.ts (new - main gameplay container)
+- **Learnings for future iterations:**
+  - Scenes should import constants from src/constants.ts for consistency
+  - Use this.scene.start('SceneKey') for scene transitions (destroys current scene)
+  - Use this.input.once() for one-time input handlers to avoid multiple triggers
+  - Phaser tweens with yoyo: true and repeat: -1 create smooth looping animations
 ---

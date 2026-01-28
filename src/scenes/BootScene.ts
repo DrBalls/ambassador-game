@@ -1,0 +1,54 @@
+import Phaser from 'phaser';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
+
+/**
+ * BootScene - Initial loading scene
+ *
+ * Displays loading indicator and preloads game assets.
+ * Transitions to MenuScene after 1 second.
+ */
+export class BootScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'BootScene' });
+  }
+
+  preload(): void {
+    // Asset preloading will be added here in future stories
+  }
+
+  create(): void {
+    // Set a colored background
+    this.cameras.main.setBackgroundColor('#1a1a2e');
+
+    // Display loading text
+    const text = this.add.text(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      'The Smallest Ambassador',
+      {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+      }
+    );
+    text.setOrigin(0.5, 0.5);
+
+    // Add subtitle
+    const subtitle = this.add.text(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 + 24,
+      'Loading...',
+      {
+        fontSize: '8px',
+        color: '#888888',
+        fontFamily: 'Arial',
+      }
+    );
+    subtitle.setOrigin(0.5, 0.5);
+
+    // Transition to MenuScene after 1 second
+    this.time.delayedCall(1000, () => {
+      this.scene.start('MenuScene');
+    });
+  }
+}
