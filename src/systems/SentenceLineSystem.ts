@@ -1,13 +1,19 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
+import { GAME_WIDTH } from '../constants';
 import { Verb, VERB_DISPLAY_TEXT } from './VerbSystem';
 
 /**
  * Layout constants for the sentence line area
+ *
+ * UI Layout (320x200):
+ * - Viewport: 0-120 (120px)
+ * - Inventory: 120-160 (40px)
+ * - Sentence line: 160-176 (16px) <- this panel
+ * - Verb bar: 176-200 (24px)
  */
 const SENTENCE_LINE = {
   HEIGHT: 16, // 16 pixels tall
-  Y_OFFSET: GAME_HEIGHT - 40, // Above verb bar (verb bar is at GAME_HEIGHT - 24)
+  Y_OFFSET: 160, // Below inventory panel (GAME_HEIGHT - 40)
 };
 
 /**
