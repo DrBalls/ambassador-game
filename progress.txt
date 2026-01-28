@@ -75,6 +75,10 @@ Started: 2026-01-28
 - Dialogue tree IDs must match dialogueId in NPC responses exactly (e.g., 'frost-colony' in both places)
 - Speaker names in dialogue nodes must match SPEAKER_PORTRAITS keys exactly (e.g., 'Commander Frost')
 - Multiple NPCs per room: CharacterPlacement[] in room data, GameScene.createNPCs() handles lifecycle
+- Hotspot giveItem action: Use HotspotCallback { action: 'giveItem', data: { itemId: 'xxx' } } in take responses — handled by GameScene.handleHotspotAction()
+- Hotspot setFlag action: Use HotspotCallback { action: 'setFlag', data: { flag: 'xxx', value: true } } — routed to GameState.setFlag()
+- Duplicate item guard: handleHotspotAction checks GameState.hasItem() before adding — items can only be picked up once
+- Custom puzzle actions: Define custom action names (e.g., 'usePulley') with switch cases in handleHotspotAction() for room-specific puzzles
 
 ---
 
@@ -864,4 +868,27 @@ Started: 2026-01-28
   - Colony-gathering walkable area Y: 70-116 is wider than counting-spot's Y: 96-116 because the horizon/sky is lower
   - Exit targets referencing future rooms (shore-duty, pools-marker) will show in sentence line but log a warning on transition until rooms are created
   - Background penguin generation uses seeded random (seed=137) for deterministic spiral placement
+---
+
+## 2026-01-28 - US-029
+- Implemented Shore Duty Station room — Pip's workshop area near the shore
+- Shore-duty background generated (ocean, ice cliff, pulley system, kelp pile, ice crystals, shell pile, work bench)
+- 5 hotspots: Pulley System, Shell Pile, Ice Crystals, Kelp Pile, Work Area
+- Each TAKE response gives an inventory item via HotspotCallback giveItem action
+- Pulley puzzle: USE on pulley checks for weighted-rope → consumes it, sets pulley_fixed flag
+- Added hotspot:action handler in GameScene for giveItem, setFlag, and usePulley actions
+- Exit west to Colony Gathering works bidirectionally
+- Files changed:
+  - src/data/rooms/shore-duty.ts (new)
+  - src/data/rooms/index.ts (register SHORE_DUTY)
+  - src/scenes/BootScene.ts (preload bg-shore-duty)
+  - src/scenes/GameScene.ts (handleHotspotAction for giveItem/setFlag/usePulley, import getItemDefinition)
+  - scripts/generate-placeholders.js (shore duty background generation)
+  - prd.json (US-029 passes: true)
+- **Learnings for future iterations:**
+  - Hotspot TAKE actions can give items via { action: 'giveItem', data: { itemId: 'xxx' } } — GameScene.handleHotspotAction() routes to GameState
+  - The hotspot:action event was previously only handled by DialogueSystem for startDialogue — now GameScene also listens for giveItem/setFlag/custom actions
+  - Custom puzzle actions (like usePulley) can be added as switch cases in handleHotspotAction() — keeps room-specific logic centralized
+  - Duplicate item guard: GameState.hasItem() check before addItem prevents double-pickup
+  - Shore-duty walkable area Y:75-116 is similar to colony-gathering but starts slightly higher (75 vs 70) due to the ice cliff edge
 ---

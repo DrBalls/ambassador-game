@@ -7,7 +7,7 @@ import { WalkSystem } from '../systems/WalkSystem';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { GameState } from '../systems/GameState';
 import { SaveSystem } from '../systems/SaveSystem';
-import { ItemDefinition } from '../data/items';
+import { ItemDefinition, getItemDefinition } from '../data/items';
 import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
 import { Verb } from '../systems/VerbSystem';
@@ -166,6 +166,12 @@ export class GameScene extends Phaser.Scene {
       this.handleNPCClick(npcDef);
     });
 
+    // Listen for hotspot actions — route giveItem, setFlag, and usePulley to game state
+    // (startDialogue is already handled by DialogueSystem)
+    this.events.on('hotspot:action', (action: string, data?: Record<string, unknown>) => {
+      this.handleHotspotAction(action, data);
+    });
+
     // Listen for verb selection events (useful for debugging)
     this.events.on('verb:selected', (verb: string) => {
       console.log(`Verb selected: ${verb}`);
@@ -289,6 +295,70 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.events.emit('hotspot:action', response.action, response.data);
       console.log(`NPC action: ${response.action}`, response.data);
+    }
+  }
+
+  /**
+   * Handle a hotspot action callback — routes game-state-changing actions
+   * like giveItem, setFlag, and usePulley from hotspot interactions.
+   * (startDialogue is handled by DialogueSystem's own listener.)
+   */
+  private handleHotspotAction(action: string, data?: Record<string, unknown>): void {
+    switch (action) {
+      case 'giveItem': {
+        const itemId = data?.itemId as string | undefined;
+        if (!itemId) break;
+
+        // Don't give duplicate items
+        if (this.gameState.hasItem(itemId)) {
+          this.showFeedback("You already have that.");
+          return;
+        }
+
+        const itemDef = getItemDefinition(itemId);
+        if (!itemDef) {
+          console.warn(`Item definition not found: ${itemId}`);
+          break;
+        }
+
+        this.gameState.addItem({
+          id: itemDef.id,
+          name: itemDef.name,
+          description: itemDef.description,
+          icon: itemDef.icon,
+        });
+        break;
+      }
+
+      case 'setFlag': {
+        const flagKey = data?.flag as string | undefined;
+        const flagValue = (data?.value as boolean) ?? true;
+        if (flagKey) {
+          this.gameState.setFlag(flagKey, flagValue);
+        }
+        break;
+      }
+
+      case 'usePulley': {
+        // Pulley puzzle: use weighted-rope on pulley to fix it
+        if (this.gameState.getFlag('pulley_fixed')) {
+          this.showFeedback("The pulley is already working. The rope holds firm and the bucket swings freely.");
+          return;
+        }
+        if (this.gameState.hasItem('weighted-rope')) {
+          // Fix the pulley!
+          this.gameState.removeItem('weighted-rope');
+          this.gameState.setFlag('pulley_fixed', true);
+          this.showFeedback("You attach the weighted rope to the pulley. It works! The bucket descends smoothly into the water below.");
+        } else if (this.gameState.hasItem('rope')) {
+          this.showFeedback("The rope alone won't hold. You need something to weigh it down.");
+        } else {
+          this.showFeedback("The pulley needs a new rope. A weighted one would work best.");
+        }
+        break;
+      }
+
+      // startDialogue is handled by DialogueSystem — no case needed here
     }
   }
 

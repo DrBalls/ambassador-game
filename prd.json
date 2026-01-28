@@ -512,7 +512,7 @@
         "Verify in browser: collect all items, fix pulley"
       ],
       "priority": 29,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

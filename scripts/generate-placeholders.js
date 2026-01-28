@@ -896,4 +896,160 @@ const portraitRiptideBuffer = createPNG(48, 48, (x, y) => {
 });
 savePNG('public/assets/portraits/riptide.png', portraitRiptideBuffer);
 
+// 16. Shore Duty Station background: 320x200 — pulley system, kelp, shells, work area
+// Pip's assigned work station near the shore, where she tinkers with salvaged items.
+const SHORE_COLORS = {
+  skyTop: { r: 40, g: 55, b: 100 },        // Deep blue sky
+  skyBottom: { r: 80, g: 100, b: 150 },     // Lighter blue
+  ocean: { r: 30, g: 60, b: 110 },          // Dark ocean blue
+  oceanHighlight: { r: 50, g: 90, b: 140 }, // Ocean shimmer
+  iceGround: { r: 175, g: 195, b: 215 },    // Light ice surface
+  iceShadow: { r: 110, g: 130, b: 165 },    // Ice shadow
+  iceEdge: { r: 150, g: 170, b: 200 },      // Ice cliff edge
+  wood: { r: 100, g: 70, b: 40 },           // Pulley frame wood
+  woodDark: { r: 70, g: 50, b: 28 },        // Dark wood
+  rope: { r: 140, g: 120, b: 80 },          // Kelp rope
+  kelpGreen: { r: 40, g: 90, b: 50 },       // Kelp green
+  kelpDark: { r: 25, g: 60, b: 35 },        // Dark kelp
+  shellPink: { r: 220, g: 180, b: 190 },    // Abalone shell pink
+  shellIridescent: { r: 180, g: 210, b: 230 }, // Shell shimmer
+  crystalBlue: { r: 160, g: 200, b: 240 },  // Ice crystal
+  crystalWhite: { r: 230, g: 240, b: 255 }, // Crystal highlight
+};
+
+const shoreDutyBuffer = createPNG(320, 200, (x, y) => {
+  // Sky (top 40px)
+  if (y < 40) {
+    const t = y / 40;
+    const r = Math.floor(SHORE_COLORS.skyTop.r + (SHORE_COLORS.skyBottom.r - SHORE_COLORS.skyTop.r) * t);
+    const g = Math.floor(SHORE_COLORS.skyTop.g + (SHORE_COLORS.skyBottom.g - SHORE_COLORS.skyTop.g) * t);
+    const b = Math.floor(SHORE_COLORS.skyTop.b + (SHORE_COLORS.skyBottom.b - SHORE_COLORS.skyTop.b) * t);
+    return { r, g, b, a: 255 };
+  }
+
+  // Ocean horizon (y 40-55)
+  if (y < 55) {
+    const waveOffset = Math.sin(x * 0.08 + y * 0.5) * 2;
+    if (y < 42 + waveOffset) {
+      return { ...SHORE_COLORS.skyBottom, a: 255 };
+    }
+    const shimmer = Math.sin(x * 0.2 + y * 0.3) * 0.3;
+    if (shimmer > 0.2) {
+      return { ...SHORE_COLORS.oceanHighlight, a: 255 };
+    }
+    return { ...SHORE_COLORS.ocean, a: 255 };
+  }
+
+  // Ice cliff edge (y 55-70)
+  if (y < 70) {
+    const edgeT = (y - 55) / 15;
+    const jagged = Math.sin(x * 0.12) * 2 + Math.sin(x * 0.25) * 1.5;
+    if (y < 57 + jagged) {
+      return { ...SHORE_COLORS.ocean, a: 255 };
+    }
+    const r = Math.floor(SHORE_COLORS.iceEdge.r - edgeT * 30);
+    const g = Math.floor(SHORE_COLORS.iceEdge.g - edgeT * 30);
+    const b = Math.floor(SHORE_COLORS.iceEdge.b - edgeT * 15);
+    return { r, g, b, a: 255 };
+  }
+
+  // Pulley system (wooden frame at x 180-220, y 60-115)
+  const isLeftPost = x >= 185 && x < 189 && y >= 65 && y < 115;
+  const isRightPost = x >= 211 && x < 215 && y >= 65 && y < 115;
+  const isCrossbar = y >= 65 && y < 69 && x >= 185 && x < 215;
+  const pulleyDx = x - 200;
+  const pulleyDy = y - 68;
+  const pulleyDist = Math.sqrt(pulleyDx * pulleyDx + pulleyDy * pulleyDy);
+  const isPulley = pulleyDist <= 5 && pulleyDist >= 2;
+  const isPulleyCenter = pulleyDist < 2;
+  const isRope = x >= 199 && x < 202 && y >= 73 && y < 100;
+  const isRopeFray = x >= 197 && x < 204 && y >= 98 && y < 102 && Math.abs(x - 200) <= (y - 98);
+
+  if (isLeftPost || isRightPost || isCrossbar) {
+    return { ...SHORE_COLORS.wood, a: 255 };
+  }
+  if (isPulley) {
+    return { ...SHORE_COLORS.woodDark, a: 255 };
+  }
+  if (isPulleyCenter) {
+    return { ...SHORE_COLORS.rope, a: 255 };
+  }
+  if (isRope || isRopeFray) {
+    return { ...SHORE_COLORS.rope, a: 255 };
+  }
+
+  // Kelp pile (left side, x 30-80, y 85-115)
+  if (x >= 30 && x < 80 && y >= 85 && y < 115) {
+    const kelpWave = Math.sin((x - 30) * 0.4 + y * 0.3) * 0.5 + Math.sin(x * 0.15) * 0.3;
+    if (kelpWave > 0.1 && y > 90 - (x - 30) * 0.2) {
+      return kelpWave > 0.4 ? { ...SHORE_COLORS.kelpGreen, a: 255 } : { ...SHORE_COLORS.kelpDark, a: 255 };
+    }
+  }
+
+  // Shell pile (right side, x 250-295, y 90-112)
+  if (x >= 250 && x < 295 && y >= 90 && y < 112) {
+    const shells = [
+      { cx: 260, cy: 100, rx: 6, ry: 4 },
+      { cx: 275, cy: 95, rx: 5, ry: 3 },
+      { cx: 268, cy: 107, rx: 7, ry: 4 },
+      { cx: 285, cy: 102, rx: 5, ry: 3 },
+      { cx: 255, cy: 108, rx: 4, ry: 3 },
+      { cx: 290, cy: 97, rx: 5, ry: 4 },
+    ];
+    for (const s of shells) {
+      const sdx = (x - s.cx) / s.rx;
+      const sdy = (y - s.cy) / s.ry;
+      if (sdx * sdx + sdy * sdy <= 1) {
+        const shimmerT = (x + y) * 0.2;
+        return shimmerT % 2 < 1 ? { ...SHORE_COLORS.shellPink, a: 255 } : { ...SHORE_COLORS.shellIridescent, a: 255 };
+      }
+    }
+  }
+
+  // Ice crystals cluster (center-left, x 120-155, y 80-105)
+  if (x >= 120 && x < 155 && y >= 80 && y < 105) {
+    const crystals = [
+      { cx: 128, baseY: 105, topY: 82, halfW: 4 },
+      { cx: 135, baseY: 105, topY: 87, halfW: 3 },
+      { cx: 143, baseY: 105, topY: 80, halfW: 5 },
+      { cx: 150, baseY: 105, topY: 85, halfW: 3 },
+    ];
+    for (const c of crystals) {
+      if (y >= c.topY && y < c.baseY) {
+        const t = (y - c.topY) / (c.baseY - c.topY);
+        const width = c.halfW * t;
+        if (Math.abs(x - c.cx) <= width) {
+          if (x - c.cx < -width * 0.5) {
+            return { ...SHORE_COLORS.crystalWhite, a: 255 };
+          }
+          return { ...SHORE_COLORS.crystalBlue, a: 255 };
+        }
+      }
+    }
+  }
+
+  // Work bench / flat area (center, x 90-170, y 105-115)
+  if (x >= 90 && x < 170 && y >= 105 && y < 115) {
+    const benchNoise = Math.sin(x * 0.3) * 5;
+    const r = Math.floor(SHORE_COLORS.iceGround.r + benchNoise);
+    const g = Math.floor(SHORE_COLORS.iceGround.g + benchNoise + 3);
+    const b = Math.floor(SHORE_COLORS.iceGround.b + benchNoise + 5);
+    return { r: Math.min(255, r), g: Math.min(255, g), b: Math.min(255, b), a: 255 };
+  }
+
+  // Main ice ground surface
+  const noiseVal = Math.sin(x * 0.18 + y * 0.09) * 0.3 + Math.sin(x * 0.07 + y * 0.14) * 0.2;
+  const depthT = Math.max(0, (y - 70) / 130);
+  const baseR = Math.floor(SHORE_COLORS.iceShadow.r + (SHORE_COLORS.iceGround.r - SHORE_COLORS.iceShadow.r) * (1 - depthT * 0.4));
+  const baseG = Math.floor(SHORE_COLORS.iceShadow.g + (SHORE_COLORS.iceGround.g - SHORE_COLORS.iceShadow.g) * (1 - depthT * 0.4));
+  const baseB = Math.floor(SHORE_COLORS.iceShadow.b + (SHORE_COLORS.iceGround.b - SHORE_COLORS.iceShadow.b) * (1 - depthT * 0.4));
+
+  const texR = Math.max(0, Math.min(255, Math.floor(baseR + noiseVal * 12)));
+  const texG = Math.max(0, Math.min(255, Math.floor(baseG + noiseVal * 12)));
+  const texB = Math.max(0, Math.min(255, Math.floor(baseB + noiseVal * 8)));
+
+  return { r: texR, g: texG, b: texB, a: 255 };
+});
+savePNG('public/assets/backgrounds/shore-duty.png', shoreDutyBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

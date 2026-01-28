@@ -3,6 +3,7 @@ import { TEST_ROOM } from './test-room';
 import { TEST_ROOM_2 } from './test-room-2';
 import { COUNTING_SPOT } from './counting-spot';
 import { COLONY_GATHERING } from './colony-gathering';
+import { SHORE_DUTY } from './shore-duty';
 
 export type { RoomData } from './types';
 export type {
@@ -27,6 +28,7 @@ export const ROOMS: Record<string, RoomData> = {
   [TEST_ROOM_2.id]: TEST_ROOM_2,
   [COUNTING_SPOT.id]: COUNTING_SPOT,
   [COLONY_GATHERING.id]: COLONY_GATHERING,
+  [SHORE_DUTY.id]: SHORE_DUTY,
 };
 
 /**
