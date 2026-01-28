@@ -21,6 +21,10 @@ Started: 2026-01-28
 - Item definitions: src/data/items.ts contains ITEM_DEFINITIONS, ITEM_COMBINATIONS, and lookup functions
 - Combination events: 'combination:success' (ItemDefinition), 'combination:fail' (source, target InventoryItem)
 - Combination keys: "sourceId+targetId" format, register both orderings for bidirectional support
+- Room data: src/data/rooms/ directory with types.ts (interfaces), per-room data files, and index.ts barrel (registry + getRoom())
+- Room registry: ROOMS record in src/data/rooms/index.ts — add new rooms here when created
+- Hotspot bounds: Use 'rect' (x,y,width,height) or 'polygon' (points array) for collision shapes
+- Hotspot responses: Per-verb responses (look/use/take/talk/walk) — string for text, HotspotCallback for actions
 
 ---
 
@@ -211,4 +215,26 @@ Started: 2026-01-28
   - New events: 'combination:success' (emits ItemDefinition), 'combination:fail' (emits source + target InventoryItem)
   - Feedback text uses Phaser tweens for fade-out animation (1.5s display + 0.5s fade)
   - The InventorySystem needs to track currentVerb to know when USE mode is active for combinations
+---
+
+## 2026-01-28 - US-009: Create Room Data Structure
+- What was implemented:
+  - Created src/data/rooms/types.ts with full room data type system
+  - RoomData interface includes: id, name, background, walkableArea, hotspots, exits, characters, ambientSound
+  - HotspotData supports rectangular and polygon bounds via discriminated union (HotspotBounds)
+  - HotspotResponses map verb actions (look/use/take/talk/walk) to string text or HotspotCallback actions
+  - ExitData defines room transitions with target room ID, spawn position, and trigger bounds
+  - CharacterPlacement defines NPC positions with facing direction and optional condition flags
+  - Created src/data/rooms/test-room.ts with sample room containing 2 hotspots, 1 exit, 1 character
+  - Created src/data/rooms/index.ts barrel with ROOMS registry and getRoom() lookup function
+- Files changed:
+  - src/data/rooms/types.ts (new - all room data interfaces)
+  - src/data/rooms/test-room.ts (new - sample test room data)
+  - src/data/rooms/index.ts (new - room registry and barrel exports)
+- **Learnings for future iterations:**
+  - Room data follows same pattern as items.ts: typed definitions + registry record + lookup function
+  - HotspotBounds uses discriminated union (type: 'rect' | 'polygon') for type-safe collision shapes
+  - Condition fields on hotspots/exits/characters allow flag-gated content (e.g., show hotspot only after event)
+  - Barrel exports from index.ts re-export types so consumers import from 'data/rooms' directly
+  - Room walk areas are Point[] polygons; the viewport area is 320x120 (Y: 0–120)
 ---
