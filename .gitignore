@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Debug logs
+firebase-debug.log
+*.log
+
+# OS files
+.DS_Store
+
+# Ralph working files (keep prd.json and progress.txt for tracking)
+archive/
+.last-branch

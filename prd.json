@@ -1,0 +1,591 @@
+{
+  "project": "The Smallest Ambassador",
+  "branchName": "ralph/smallest-ambassador-game",
+  "description": "A Sierra-style point-and-click adventure game based on 'The Smallest Ambassador' novel. Play as Pip, a tiny penguin who becomes Earth's first ambassador to alien refugees. Features VGA-style pixel art (320x200), SCUMM-style verb interface, inventory puzzles, and pattern-matching puzzles representing base-7 mathematics.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Initialize Phaser 3 Project",
+      "description": "As a developer, I need a working Phaser 3 + TypeScript + Vite project scaffold.",
+      "acceptanceCriteria": [
+        "npm create vite@latest with TypeScript template initialized",
+        "phaser@3.80.0 installed as dependency",
+        "src/main.ts created with basic Phaser.Game config",
+        "Game dimensions configured: 320x200 native, scaled 4x to 1280x800",
+        "pixelArt: true and roundPixels: true set in render config",
+        "npm run dev launches game with colored background",
+        "npm run build produces working production bundle",
+        "TypeScript strict mode enabled, no errors",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create Scene Structure",
+      "description": "As a developer, I need the basic scene architecture for the adventure game.",
+      "acceptanceCriteria": [
+        "src/scenes/BootScene.ts created for asset preloading",
+        "src/scenes/MenuScene.ts created for title screen placeholder",
+        "src/scenes/GameScene.ts created for main gameplay container",
+        "All scenes registered in main.ts game config",
+        "BootScene transitions to MenuScene after 1 second",
+        "MenuScene shows 'Click to Start' text, transitions to GameScene on click",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Pixel-Perfect Scaling",
+      "description": "As a player, I want crisp pixel graphics without blur at any window size.",
+      "acceptanceCriteria": [
+        "src/utils/PixelScale.ts utility created",
+        "Integer scaling implemented (1x, 2x, 3x, 4x based on window)",
+        "CSS image-rendering: pixelated applied to canvas",
+        "Window resize events handled, scale recalculated",
+        "Canvas centered in viewport with letterboxing",
+        "No sub-pixel rendering artifacts",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Add Placeholder Assets Structure",
+      "description": "As a developer, I need asset folders and placeholder files for development.",
+      "acceptanceCriteria": [
+        "public/assets/sprites/ directory created",
+        "public/assets/backgrounds/ directory created",
+        "public/assets/ui/ directory created",
+        "public/assets/portraits/ directory created",
+        "public/assets/audio/music/ directory created",
+        "public/assets/audio/sfx/ directory created",
+        "public/assets/fonts/ directory created",
+        "Placeholder 320x200 PNG background added (solid blue with grid)",
+        "Placeholder 32x48 character sprite added (colored rectangle)",
+        "Placeholder 16x16 UI button sprite added",
+        "Assets load successfully in BootScene",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Create Verb Bar Component",
+      "description": "As a player, I want a SCUMM-style verb bar to select actions.",
+      "acceptanceCriteria": [
+        "src/systems/VerbSystem.ts created",
+        "6 verb buttons rendered at bottom of screen: WALK, LOOK, TALK, USE, TAKE, GIVE",
+        "Each verb is 48x16 pixels with pixel font text",
+        "Verb bar background is dark blue (#1a1a2e)",
+        "Verb highlights on hover (lighter color)",
+        "Click verb to select it (stays highlighted)",
+        "Currently selected verb tracked in state",
+        "Default selected verb is WALK",
+        "Typecheck passes",
+        "Verify in browser: click each verb, confirm it highlights and stays selected"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add Sentence Line Display",
+      "description": "As a player, I want to see my current action described as I interact.",
+      "acceptanceCriteria": [
+        "Sentence line area added above verb bar (320x16 pixels)",
+        "Current verb displayed when selected: 'Walk to'",
+        "Updates to show 'Walk to [target]' when hovering hotspot",
+        "Pixel font used (8px height)",
+        "Text is white on dark background",
+        "Target text clears when mouse leaves hotspot",
+        "Typecheck passes",
+        "Verify in browser: select USE, hover over test hotspot, see 'Use [hotspot name]' displayed"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Create Inventory Panel",
+      "description": "As a player, I want an inventory to store collected items.",
+      "acceptanceCriteria": [
+        "src/systems/InventorySystem.ts created",
+        "8-slot inventory row rendered below verb bar (40px height)",
+        "Each slot is 32x32 pixels with 4px padding",
+        "Scroll arrows on left/right when more than 8 items",
+        "Click item to select for USE/GIVE actions",
+        "Right-click item shows LOOK description",
+        "Selected item has highlight border",
+        "Inventory state persists in memory",
+        "Typecheck passes",
+        "Verify in browser: add test items via console, scroll inventory, select items"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Item Combination",
+      "description": "As a player, I want to combine inventory items to solve puzzles.",
+      "acceptanceCriteria": [
+        "USE selected item ON another inventory item triggers combination check",
+        "src/data/items.ts created with item definitions including combinesWith property",
+        "Successful combination removes source items, adds result item",
+        "Failed combination shows 'That doesn't work' message",
+        "Combination results defined in item data",
+        "Typecheck passes",
+        "Verify in browser: combine two test items that should work, confirm new item appears"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Create Room Data Structure",
+      "description": "As a developer, I need a data format for defining adventure game rooms.",
+      "acceptanceCriteria": [
+        "src/data/rooms/types.ts created with RoomData interface",
+        "RoomData includes: id, name, background, walkableArea, hotspots, exits, characters, ambientSound",
+        "src/data/rooms/test-room.ts created with sample room data",
+        "Room registry object exported",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Render Room Background",
+      "description": "As a player, I want to see room backgrounds that establish the scene.",
+      "acceptanceCriteria": [
+        "GameScene loads room data by ID",
+        "Background image displayed at 0,0 (320x144 viewport area)",
+        "Background scales with game canvas",
+        "loadRoom(roomId) method created on GameScene",
+        "Room change clears previous background",
+        "Typecheck passes",
+        "Verify in browser: call loadRoom with test room, see background appear"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Implement Hotspot System",
+      "description": "As a player, I want to interact with objects in the room.",
+      "acceptanceCriteria": [
+        "src/entities/Hotspot.ts class created",
+        "Hotspots defined by polygon or rectangle bounds",
+        "Mouse hover over hotspot changes cursor",
+        "Hotspot name appears in sentence line on hover",
+        "Click hotspot with verb triggers action",
+        "Each hotspot has responses for: look, use, take, talk",
+        "Responses can be text or trigger callbacks",
+        "Typecheck passes",
+        "Verify in browser: hover test hotspot, see name. Click with LOOK, see description text"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Add Room Exits",
+      "description": "As a player, I want to move between rooms through exits.",
+      "acceptanceCriteria": [
+        "Exits are special hotspots at room edges",
+        "Walking to exit triggers room transition",
+        "Exit data includes: target room ID, spawn position",
+        "Room transition uses fade out/in effect (0.5s each)",
+        "Player position set to spawn point in new room",
+        "Typecheck passes",
+        "Verify in browser: walk to exit, see fade transition, appear in new room at correct position"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Create Player Character",
+      "description": "As a player, I want to control Pip and see her in the game world.",
+      "acceptanceCriteria": [
+        "src/entities/Character.ts base class created",
+        "src/entities/Player.ts created extending Character",
+        "Player sprite renders at current position",
+        "Sprite has idle animation (2 frames, 500ms each)",
+        "Player faces direction of last movement",
+        "Z-depth based on Y position (walk behind/in front)",
+        "Typecheck passes",
+        "Verify in browser: player sprite visible, idle animation plays, depth sorting works"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Implement Click-to-Walk",
+      "description": "As a player, I want Pip to walk where I click.",
+      "acceptanceCriteria": [
+        "Click on walkable area with WALK verb selected",
+        "Player moves toward click position at 60 pixels/second",
+        "Walking animation plays during movement (4 frames)",
+        "Player stops at destination",
+        "Click during walk updates destination",
+        "Cannot walk outside walkable area polygon",
+        "Typecheck passes",
+        "Verify in browser: click various points, Pip walks to them, stops at boundaries"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add Pathfinding",
+      "description": "As a player, I want Pip to navigate around obstacles.",
+      "acceptanceCriteria": [
+        "A* pathfinding implemented in src/systems/WalkSystem.ts",
+        "Walkable area converted to navigation mesh",
+        "Player follows path around obstacles",
+        "Path recalculates if blocked",
+        "Visual debug mode to show walkable area (toggle with F1)",
+        "Typecheck passes",
+        "Verify in browser: place obstacle in path, Pip walks around it. F1 shows mesh"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Create NPC Characters",
+      "description": "As a developer, I need NPCs that can appear in rooms.",
+      "acceptanceCriteria": [
+        "NPCs use Character base class",
+        "Room data specifies NPC placements (id, position, facing)",
+        "NPCs render with idle animations",
+        "NPCs are hotspots (can LOOK, TALK)",
+        "NPC dialogue triggers on TALK action",
+        "Typecheck passes",
+        "Verify in browser: test room has NPC, can look at and talk to them"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Create Dialogue Data Format",
+      "description": "As a developer, I need a format for branching dialogue trees.",
+      "acceptanceCriteria": [
+        "src/data/dialogue/types.ts created with DialogueNode, DialogueResponse, DialogueTree types",
+        "DialogueNode includes: id, speaker, text, responses, next, condition, action",
+        "Sample dialogue tree created in src/data/dialogue/test-dialogue.ts",
+        "Sample dialogue has multiple branches",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Render Dialogue UI",
+      "description": "As a player, I want to see character dialogue in a text box.",
+      "acceptanceCriteria": [
+        "src/systems/DialogueSystem.ts created",
+        "Dialogue box appears at bottom of viewport (320x60 pixels)",
+        "Speaker portrait on left (48x48 pixels)",
+        "Speaker name displayed above text",
+        "Text appears with typewriter effect (40 chars/second)",
+        "Click to complete typewriter instantly",
+        "Click again to advance to next node",
+        "Game interaction disabled during dialogue",
+        "Typecheck passes",
+        "Verify in browser: trigger test dialogue, see portrait, typewriter text, click to advance"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Implement Dialogue Choices",
+      "description": "As a player, I want to choose responses in conversations.",
+      "acceptanceCriteria": [
+        "When node has responses, display choice list",
+        "Up to 4 choices displayed as clickable text",
+        "Hover highlights choice",
+        "Click choice advances to its nextNode",
+        "Choices can have conditions (only show if flag is true)",
+        "Typecheck passes",
+        "Verify in browser: reach choice node, see options, click one, dialogue continues correctly"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Add Dialogue Actions",
+      "description": "As a developer, I need dialogue to trigger game state changes.",
+      "acceptanceCriteria": [
+        "Dialogue nodes can have action property",
+        "Actions supported: setFlag, giveItem, takeItem, startQuest",
+        "src/systems/GameState.ts created for flags and state",
+        "Actions execute when node is displayed",
+        "Typecheck passes",
+        "Verify in browser: dialogue gives item, item appears in inventory"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Implement Game State Manager",
+      "description": "As a developer, I need centralized game state management.",
+      "acceptanceCriteria": [
+        "GameState.ts manages: current room, player position, inventory, flags, quest states",
+        "State is a singleton accessible throughout app",
+        "Methods implemented: getFlag, setFlag, hasItem, addItem, removeItem",
+        "State changes emit events for UI updates",
+        "Typecheck passes",
+        "Verify in browser: set flags and inventory via console, values persist during session"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Save to LocalStorage",
+      "description": "As a player, I want my game progress saved automatically.",
+      "acceptanceCriteria": [
+        "src/systems/SaveSystem.ts created",
+        "GameState serialized to JSON",
+        "Save to localStorage on room transitions",
+        "Save includes timestamp",
+        "Three save slots available",
+        "Typecheck passes",
+        "Verify in browser: play, close tab, reopen, confirm state is saved in localStorage"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Load Game and Save Menu",
+      "description": "As a player, I want to save/load from a menu.",
+      "acceptanceCriteria": [
+        "ESC key opens pause menu",
+        "Menu shows: Resume, Save Game, Load Game, Quit to Menu",
+        "Save Game shows 3 slots with timestamps",
+        "Load Game restores full state",
+        "Quit returns to MenuScene",
+        "Typecheck passes",
+        "Verify in browser: save to slot 2, quit, load slot 2, game state restored"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Define Seven Sacred Elements",
+      "description": "As a developer, I need the visual/audio elements for base-7 patterns.",
+      "acceptanceCriteria": [
+        "src/systems/PatternPuzzle.ts created",
+        "7 colors defined: ice-white, deep-blue, aurora-green, sunset-orange, shadow-purple, starlight-silver, quantum-gold",
+        "7 tones defined: C4, D4, E4, F4, G4, A4, B4",
+        "7 shapes defined: dot, line, triangle, square, pentagon, hexagon, heptagon",
+        "Sprite sheet created with 7 colored shape icons (32x32 each)",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Create Pattern Display Component",
+      "description": "As a player, I want to see pattern sequences displayed visually.",
+      "acceptanceCriteria": [
+        "Pattern display shows sequence of colored shapes",
+        "Shapes appear one at a time with 500ms delay",
+        "Each shape plays its corresponding tone",
+        "Sequence can be replayed on demand",
+        "Display supports 3, 5, or 7 element sequences",
+        "Typecheck passes",
+        "Verify in browser: display test pattern, see shapes appear with sounds"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Implement Pattern Input",
+      "description": "As a player, I want to input pattern sequences to solve puzzles.",
+      "acceptanceCriteria": [
+        "7 clickable shape buttons shown during puzzle",
+        "Click adds shape to player sequence",
+        "Player sequence displayed above buttons",
+        "Backspace removes last input",
+        "Submit button checks against target pattern",
+        "Success: green flash, puzzle complete callback",
+        "Failure: red flash, sequence clears, can retry",
+        "Typecheck passes",
+        "Verify in browser: see pattern, input matching sequence, puzzle succeeds"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Create Pip's Counting Spot Room",
+      "description": "As a player, I want to start the game at Pip's private counting spot.",
+      "acceptanceCriteria": [
+        "Background created: dawn sky with stars, ice edge, telescope",
+        "Hotspots added: Stars (LOOK triggers counting), Telescope, Ice Wall with marks",
+        "LOOK at stars reveals 21 normal, 1 wrong color",
+        "LOOK at marks shows Pool's mysterious writing",
+        "Exit south to Colony Gathering works",
+        "Ambient sounds: wind, distant colony sounds",
+        "Typecheck passes",
+        "Verify in browser: explore room, examine all hotspots, read descriptions"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Create Colony Gathering Room",
+      "description": "As a player, I want to explore the main colony area.",
+      "acceptanceCriteria": [
+        "Background created: colony spiral formation, many penguins, ice shelves",
+        "NPCs added: Commander Frost, Riptide, Bubble (with dialogue trees)",
+        "Hotspots added: Gathering area, depth call board, various ice features",
+        "Exits work: North to Counting Spot, East to Shore Duty, West to Pool's Marker",
+        "Bubble greets Pip warmly, offers to help",
+        "Riptide mocks Pip as 'Puddle'",
+        "Typecheck passes",
+        "Verify in browser: talk to all NPCs, explore all exits"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Create Shore Duty Station Room",
+      "description": "As a player, I want to visit Pip's workshop area.",
+      "acceptanceCriteria": [
+        "Background created: pulley system, kelp, shells, work area",
+        "Hotspots added: Pulley (interactive), Shell pile, Ice crystals, Kelp",
+        "Inventory items obtainable: Ice Lens, Abalone Shells, Fishing Weight",
+        "Pulley puzzle works: combine weight + rope to fix",
+        "LOOK descriptions show Pip's ingenuity",
+        "Exit west to Colony Gathering works",
+        "Typecheck passes",
+        "Verify in browser: collect all items, fix pulley"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Create Forbidden Zone Room",
+      "description": "As a player, I want to discover the crashed probe.",
+      "acceptanceCriteria": [
+        "Background created: twisted ice, melted circle with probe, steam",
+        "The Probe is central hotspot",
+        "LOOK at probe describes base-7 light patterns",
+        "USE ice crystals on probe triggers pattern puzzle",
+        "Success: Probe opens, shows Europa vision (cutscene)",
+        "Riptide arrives after vision, probe goes defensive",
+        "Frost arrives with colony, dramatic dialogue",
+        "Pip touches probe, receives countdown message",
+        "End of Act 1 flag set",
+        "Typecheck passes",
+        "Verify in browser: complete first contact sequence, see countdown"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "Create Title Screen",
+      "description": "As a player, I want an attractive title screen.",
+      "acceptanceCriteria": [
+        "Background: Antarctic vista with aurora",
+        "Title displayed: 'The Smallest Ambassador' in pixel font",
+        "Subtitle displayed: 'A Sierra-Style Adventure'",
+        "Menu buttons: New Game, Continue, Options, Credits",
+        "Continue only shows if save exists",
+        "Animated elements (aurora shimmer, stars)",
+        "Typecheck passes",
+        "Verify in browser: title screen displays, all buttons work"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Add Sound Effects",
+      "description": "As a player, I want audio feedback for actions.",
+      "acceptanceCriteria": [
+        "8-bit style sound effects created or sourced",
+        "Effects for: footsteps, item pickup, UI click, dialogue blip, door/exit, puzzle success, puzzle fail",
+        "Volume control in options",
+        "Mute toggle (M key)",
+        "Typecheck passes",
+        "Verify in browser: all interactions have appropriate sounds"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "Add Background Music",
+      "description": "As a player, I want atmospheric music for each area.",
+      "acceptanceCriteria": [
+        "Retro-style background tracks created or sourced",
+        "Tracks for: Title, Colony, Shore Duty, Forbidden Zone, Tense moment",
+        "Music loops seamlessly",
+        "Cross-fade between tracks on room change",
+        "Volume control in options",
+        "Typecheck passes",
+        "Verify in browser: music plays and changes appropriately between rooms"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
