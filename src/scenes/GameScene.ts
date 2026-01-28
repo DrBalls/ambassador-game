@@ -7,6 +7,7 @@ import { ItemDefinition } from '../data/items';
 import { RoomData, HotspotData, HotspotCallback, ExitData, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
 import { Verb } from '../systems/VerbSystem';
+import { Player } from '../entities/Player';
 
 /**
  * GameScene - Main gameplay container
@@ -24,6 +25,7 @@ export class GameScene extends Phaser.Scene {
   private hotspots: Hotspot[] = [];
   private exitZones: Phaser.GameObjects.Zone[] = [];
   private isTransitioning = false;
+  private player!: Player;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -33,9 +35,8 @@ export class GameScene extends Phaser.Scene {
     // Load the test room (future: room ID will come from game state)
     this.loadRoom('test-room');
 
-    // Display placeholder character sprite in center of viewport area (above UI)
-    // Viewport is 320x120 (leaving 80px for inventory + sentence line + verb bar at bottom)
-    this.add.image(GAME_WIDTH / 2, 60, 'character');
+    // Create the player character in center of viewport (bottom-center origin, so Y=100 puts feet near bottom of walkable area)
+    this.player = new Player(this, GAME_WIDTH / 2, 100);
 
     // Initialize UI systems in order (bottom to top visually, but create order doesn't matter)
     // UI Layout:
@@ -148,6 +149,13 @@ export class GameScene extends Phaser.Scene {
    */
   getInventorySystem(): InventorySystem {
     return this.inventorySystem;
+  }
+
+  /**
+   * Get the player character
+   */
+  getPlayer(): Player {
+    return this.player;
   }
 
   /**
@@ -331,8 +339,8 @@ export class GameScene extends Phaser.Scene {
       // Load the new room (clears old background, hotspots, exit zones)
       this.loadRoom(targetRoomId);
 
-      // Set player position to spawn point (future: move actual player entity)
-      console.log(`Player spawns at (${spawnPosition.x}, ${spawnPosition.y})`);
+      // Set player position to spawn point in the new room
+      this.player.setPosition(spawnPosition.x, spawnPosition.y);
 
       // Fade in (500ms)
       this.cameras.main.fadeIn(500, 0, 0, 0);

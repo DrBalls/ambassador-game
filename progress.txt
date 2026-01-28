@@ -34,6 +34,12 @@ Started: 2026-01-28
 - Exit zones: Created separately from hotspots in GameScene; emit hotspot:hover/leave events for sentence line
 - Room transitions: transitionToRoom() uses camera.fadeOut(500) → loadRoom → camera.fadeIn(500) with isTransitioning guard
 - Camera fade events: 'camerafadeoutcomplete' and 'camerafadeincomplete' for chaining transition steps
+- Character entities: src/entities/Character.ts base class, src/entities/Player.ts extends it
+- Character origin: (0.5, 1) bottom-center — Y position represents feet on ground
+- Depth sorting: sprite.setDepth(y) for Y-based ordering; update on every setPosition()
+- Sprite sheets: this.load.spritesheet() in BootScene preload(); use PLAYER_CONFIG for asset metadata
+- Animation guard: Check anims.exists(key) before anims.create() to avoid duplicate registration
+- Player access: GameScene.getPlayer() returns the Player entity
 
 ---
 
@@ -313,4 +319,35 @@ Started: 2026-01-28
   - Exits are separate from hotspots — they don't go through Hotspot entity or hotspot:click events
   - isTransitioning guard is essential — without it, rapid clicks queue multiple room loads
   - Browser testing with Playwright requires native page.mouse.click() — synthetic PointerEvent dispatches don't reach Phaser's input manager
+---
+
+## 2026-01-28 - US-013: Create Player Character
+- What was implemented:
+  - Created src/entities/Character.ts base class with position, facing, depth, and animation support
+  - Created src/entities/Player.ts extending Character with idle animation (2 frames, 500ms each)
+  - Generated 2-frame player sprite sheet (64x48 total, 32x48 per frame) with bob effect for idle
+  - Player sprite: dark blue penguin body, white belly, orange beak and feet, white eyes
+  - Y-based depth sorting: sprite.setDepth(y) makes characters lower on screen render in front
+  - Sprite origin at bottom-center (0.5, 1) for natural foot-placement positioning
+  - Animation registration guard (anims.exists check) prevents duplicate registration on room reload
+  - Integrated Player into GameScene, replacing static character image
+  - Room transitions set player position to spawn point via player.setPosition()
+  - PLAYER_CONFIG exported from Player.ts centralizes texture key, asset path, frame dimensions
+  - BootScene loads sprite sheet via this.load.spritesheet() using PLAYER_CONFIG
+  - Player faces direction via flipX (only right-facing art needed)
+- Files changed:
+  - src/entities/Character.ts (new - base character class)
+  - src/entities/Player.ts (new - player character with idle animation)
+  - scripts/generate-placeholders.js (added player sprite sheet generation)
+  - public/assets/sprites/player-sheet.png (new - 2-frame idle sprite sheet)
+  - src/scenes/BootScene.ts (added sprite sheet loading)
+  - src/scenes/GameScene.ts (replaced static image with Player entity, spawn position on transitions)
+- **Learnings for future iterations:**
+  - Use this.load.spritesheet() for animated sprites, not this.load.image()
+  - Sprite origin (0.5, 1) at bottom-center is standard for adventure game characters — Y position = feet
+  - setDepth(y) provides Y-based depth sorting; update on every position change
+  - Animation registration is global (game-level, not scene-level) — guard with anims.exists() to avoid duplicates
+  - PLAYER_CONFIG const centralizes all player asset metadata — import in both BootScene and Player
+  - flipX handles facing direction — no need for separate left/right sprite art
+  - Player created AFTER loadRoom() in GameScene.create() so it renders on top of background
 ---

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
+import { PLAYER_CONFIG } from '../entities/Player';
 
 /**
  * BootScene - Initial loading scene
@@ -18,6 +19,12 @@ export class BootScene extends Phaser.Scene {
 
     // Load character sprites
     this.load.image('character', 'assets/sprites/character.png');
+
+    // Load player sprite sheet (2 frames for idle animation)
+    this.load.spritesheet(PLAYER_CONFIG.textureKey, PLAYER_CONFIG.assetPath, {
+      frameWidth: PLAYER_CONFIG.frameWidth,
+      frameHeight: PLAYER_CONFIG.frameHeight,
+    });
 
     // Load UI elements
     this.load.image('ui-button', 'assets/ui/button.png');

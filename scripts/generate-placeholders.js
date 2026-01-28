@@ -109,4 +109,54 @@ const buttonBuffer = createPNG(16, 16, (x, y, w, h) => {
 });
 savePNG('public/assets/ui/button.png', buttonBuffer);
 
+// 4. Player sprite sheet: 2 frames (32x48 each) → 64x48 total
+// Frame 0: idle, Frame 1: idle variant (slight bob)
+const playerSheetBuffer = createPNG(64, 48, (x, y) => {
+  // Determine which frame we're in (0 or 1)
+  const frame = Math.floor(x / 32);
+  const localX = x % 32;
+
+  // Frame 1 has a 1px vertical offset (bob effect)
+  const yOffset = frame === 1 ? 1 : 0;
+  const adjustedY = y - yOffset;
+
+  // Outside shifted bounds → transparent
+  if (adjustedY < 0 || adjustedY >= 48) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
+
+  // Penguin shape (same as original character, using adjustedY for bob)
+  const isBody = localX >= 4 && localX < 28 && adjustedY >= 8 && adjustedY < 44;
+  const isHead = localX >= 8 && localX < 24 && adjustedY >= 0 && adjustedY < 16;
+
+  // White belly
+  const isBelly = localX >= 10 && localX < 22 && adjustedY >= 16 && adjustedY < 40;
+
+  // Eyes (white dots)
+  const isLeftEye = localX >= 10 && localX < 14 && adjustedY >= 6 && adjustedY < 10;
+  const isRightEye = localX >= 18 && localX < 22 && adjustedY >= 6 && adjustedY < 10;
+
+  // Beak (orange)
+  const isBeak = localX >= 14 && localX < 18 && adjustedY >= 10 && adjustedY < 14;
+
+  // Feet (orange)
+  const isFeet = (localX >= 8 && localX < 14 || localX >= 18 && localX < 24) && adjustedY >= 44 && adjustedY < 48;
+
+  if (isLeftEye || isRightEye) {
+    return { ...COLORS.white, a: 255 };
+  }
+  if (isBeak || isFeet) {
+    return { ...COLORS.orange, a: 255 };
+  }
+  if (isBelly) {
+    return { ...COLORS.white, a: 255 };
+  }
+  if (isBody || isHead) {
+    return { ...COLORS.darkBlue, a: 255 };
+  }
+  // Transparent background
+  return { r: 0, g: 0, b: 0, a: 0 };
+});
+savePNG('public/assets/sprites/player-sheet.png', playerSheetBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');
