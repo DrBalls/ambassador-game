@@ -3,7 +3,8 @@ Started: 2026-01-28
 
 ## Codebase Patterns
 - Game engine: Phaser 3.80+ with TypeScript
-- Resolution: 320x200 native, 4x integer scaling to 1280x800
+- Resolution: 320x200 native, dynamic integer scaling (1x-4x+) based on viewport
+- Scaling utility: src/utils/PixelScale.ts handles integer scale calculation and resize events
 - Interface: SCUMM-style verb bar (WALK, LOOK, TALK, USE, TAKE, GIVE)
 - Pixel art: VGA-style 256 colors, nearest-neighbor scaling
 - Pattern puzzles use 7 elements (colors, tones, shapes) representing base-7 mathematics
@@ -71,4 +72,24 @@ Started: 2026-01-28
   - Use this.scene.start('SceneKey') for scene transitions (destroys current scene)
   - Use this.input.once() for one-time input handlers to avoid multiple triggers
   - Phaser tweens with yoyo: true and repeat: -1 create smooth looping animations
+---
+
+## 2026-01-28 - US-003: Implement Pixel-Perfect Scaling
+- What was implemented:
+  - Created src/utils/PixelScale.ts with integer scaling calculations
+  - calculateIntegerScale() uses Math.floor to ensure whole-number scale factors
+  - setupResizeListener() with 100ms debounce for responsive scaling on window resize
+  - applyPixelPerfectCSS() applies image-rendering: pixelated/crisp-edges to canvas
+  - Updated main.ts to use Phaser.Scale.NONE with manual zoom control
+  - Canvas auto-centers with letterboxing via Phaser's autoCenter: CENTER_BOTH
+- Files changed:
+  - src/utils/PixelScale.ts (new - pixel-perfect scaling utility)
+  - src/main.ts (dynamic scaling integration)
+  - src/constants.ts (updated SCALE_FACTOR to MAX_PREFERRED_SCALE)
+- **Learnings for future iterations:**
+  - Use Phaser.Scale.NONE when you need precise control over scaling
+  - Math.floor is critical for integer scaling - Math.round causes blur at fractional scales
+  - Debouncing resize events (100ms) prevents excessive recalculations during window dragging
+  - game.scale.setZoom() dynamically changes scale without recreating the game
+  - game.events.once('ready') is the right time to access game.canvas
 ---
