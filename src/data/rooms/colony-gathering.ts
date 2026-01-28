@@ -116,6 +116,19 @@ export const COLONY_GATHERING: RoomData = {
       },
       name: "Pool's Marker",
     },
+    {
+      id: 'exit-south-to-forbidden-zone',
+      targetRoomId: 'forbidden-zone',
+      spawnPosition: { x: 160, y: 90 },
+      bounds: {
+        type: 'rect',
+        x: 120,
+        y: 112,
+        width: 80,
+        height: 8,
+      },
+      name: 'Forbidden Zone',
+    },
   ],
   characters: [
     {

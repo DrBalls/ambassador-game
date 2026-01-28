@@ -358,8 +358,121 @@ export class GameScene extends Phaser.Scene {
         break;
       }
 
+      case 'useProbe': {
+        this.handleUseProbe();
+        break;
+      }
+
       // startDialogue is handled by DialogueSystem — no case needed here
     }
+  }
+
+  /**
+   * Handle the probe interaction in the Forbidden Zone.
+   * Multi-stage sequence:
+   * 1. Check if player has ice crystals (ice-lens)
+   * 2. Show pattern display (base-7 sequence)
+   * 3. Show pattern input (player must reproduce the sequence)
+   * 4. On success: start Europa vision dialogue
+   * 5. After vision: start Riptide arrival dialogue
+   * 6. After Riptide: start Frost arrival + countdown dialogue
+   */
+  private handleUseProbe(): void {
+    // Already completed Act 1
+    if (this.gameState.getFlag('act1_complete')) {
+      this.showFeedback("The probe sits quietly now, its countdown message delivered. Forty-nine days...");
+      return;
+    }
+
+    // Already seen the vision — Frost arrival dialogue
+    if (this.gameState.getFlag('riptide_fetched_frost')) {
+      this.events.emit('hotspot:action', 'startDialogue', { dialogueId: 'forbidden-zone-frost' });
+      return;
+    }
+
+    // Vision seen, Riptide not yet arrived
+    if (this.gameState.getFlag('probe_vision_seen') && !this.gameState.getFlag('riptide_at_probe')) {
+      this.events.emit('hotspot:action', 'startDialogue', { dialogueId: 'forbidden-zone-riptide' });
+      return;
+    }
+
+    // Probe opened but vision not yet triggered
+    if (this.gameState.getFlag('probe_opened')) {
+      this.events.emit('hotspot:action', 'startDialogue', { dialogueId: 'forbidden-zone-vision' });
+      return;
+    }
+
+    // First attempt: need ice crystals (ice-lens)
+    if (!this.gameState.hasItem('ice-lens')) {
+      this.showFeedback("The probe's surface shimmers with light patterns. You need something to focus the light — a lens or crystal...");
+      return;
+    }
+
+    // Player has ice lens — start the pattern puzzle!
+    this.gameState.removeItem('ice-lens');
+    this.showFeedback("You hold the ice lens up to the probe. The light patterns focus into a clear sequence...");
+
+    // After a brief delay, show the pattern display
+    this.time.delayedCall(2000, () => {
+      // The probe's pattern: a 3-element base-7 sequence
+      const probePattern = [0, 2, 4]; // ice-white, aurora-green, shadow-purple
+
+      const display = new PatternDisplay(this, probePattern);
+      display.play();
+
+      // When display completes, show the input puzzle
+      this.events.once('pattern:displayComplete', () => {
+        this.time.delayedCall(500, () => {
+          display.destroy();
+
+          // Show pattern input for the player to reproduce the sequence
+          const input = new PatternInput(this, probePattern, (success: boolean) => {
+            if (success) {
+              // Pattern solved — probe opens!
+              this.time.delayedCall(800, () => {
+                input.destroy();
+                this.gameState.setFlag('probe_opened', true);
+
+                // Chain: vision → riptide → frost dialogues
+                this.startProbeCutsceneChain();
+              });
+            }
+            // Failure: PatternInput handles retry internally
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Start the chain of dialogues for the probe cutscene.
+   * Vision → Riptide arrival → Frost arrival + countdown.
+   */
+  private startProbeCutsceneChain(): void {
+    // Start with the Europa vision
+    this.events.emit('hotspot:action', 'startDialogue', { dialogueId: 'forbidden-zone-vision' });
+
+    // After vision dialogue ends, start Riptide arrival
+    const onVisionEnd = () => {
+      if (!this.gameState.getFlag('probe_vision_seen')) return;
+      this.events.off('dialogue:end', onVisionEnd);
+
+      this.time.delayedCall(1000, () => {
+        this.events.emit('hotspot:action', 'startDialogue', { dialogueId: 'forbidden-zone-riptide' });
+
+        // After Riptide dialogue ends, start Frost arrival
+        const onRiptideEnd = () => {
+          if (!this.gameState.getFlag('riptide_fetched_frost')) return;
+          this.events.off('dialogue:end', onRiptideEnd);
+
+          this.time.delayedCall(1000, () => {
+            this.events.emit('hotspot:action', 'startDialogue', { dialogueId: 'forbidden-zone-frost' });
+          });
+        };
+        this.events.on('dialogue:end', onRiptideEnd);
+      });
+    };
+    this.events.on('dialogue:end', onVisionEnd);
   }
 
   /**

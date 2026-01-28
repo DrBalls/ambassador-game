@@ -79,6 +79,10 @@ Started: 2026-01-28
 - Hotspot setFlag action: Use HotspotCallback { action: 'setFlag', data: { flag: 'xxx', value: true } } — routed to GameState.setFlag()
 - Duplicate item guard: handleHotspotAction checks GameState.hasItem() before adding — items can only be picked up once
 - Custom puzzle actions: Define custom action names (e.g., 'usePulley') with switch cases in handleHotspotAction() for room-specific puzzles
+- Multi-stage cutscene: Chain dialogues via dialogue:end event listeners with flag guards — e.g., onVisionEnd checks probe_vision_seen before starting next dialogue
+- Pattern puzzle integration: PatternDisplay.play() → 'pattern:displayComplete' event → PatternInput constructor → onComplete callback → dialogue chain
+- Cutscene event chaining: Use scene.events.on('dialogue:end', handler) with flag checks to sequence multiple dialogues; remove listener with events.off after triggering
+- Probe puzzle action: 'useProbe' custom action in handleHotspotAction() — multi-state (checks flags: probe_opened, probe_vision_seen, riptide_fetched_frost, act1_complete)
 
 ---
 
@@ -891,4 +895,34 @@ Started: 2026-01-28
   - Custom puzzle actions (like usePulley) can be added as switch cases in handleHotspotAction() — keeps room-specific logic centralized
   - Duplicate item guard: GameState.hasItem() check before addItem prevents double-pickup
   - Shore-duty walkable area Y:75-116 is similar to colony-gathering but starts slightly higher (75 vs 70) due to the ice cliff edge
+---
+
+## 2026-01-28 - US-030
+- Implemented Forbidden Zone room — the alien probe crash site and Act 1 climax location
+- Generated forbidden-zone background: twisted ice pillars, central melted crater with metallic probe, green glow, steam wisps, radiating cracks
+- Room data: 4 hotspots (The Probe, Twisted Ice, Melted Crater, Steam), 1 exit south to Colony Gathering
+- The Probe hotspot has custom 'useProbe' action — multi-state interaction based on game flags
+- Created 3 dialogue trees for the first-contact sequence:
+  - `forbidden-zone-vision`: Linear cutscene — Europa ocean vision, creatures of light, Pool's legacy (sets probe_vision_seen)
+  - `forbidden-zone-riptide`: Riptide arrives, sees glowing probe, probe goes defensive, Riptide fetches Frost (sets riptide_at_probe, riptide_fetched_frost)
+  - `forbidden-zone-frost`: Frost arrives with colony, Pip explains, Bubble defends, Pip touches probe, countdown message (sets received_countdown, act1_complete)
+- Pattern puzzle integration: USE probe with ice-lens → PatternDisplay [0,2,4] → PatternInput → on success → dialogue chain
+- Cutscene chaining: dialogue:end event listeners with flag guards sequence vision → riptide → frost dialogues automatically
+- Added south exit from Colony Gathering to Forbidden Zone
+- Files changed:
+  - src/data/rooms/forbidden-zone.ts (new — room data)
+  - src/data/dialogue/forbidden-zone-vision.ts (new — 3 dialogue trees)
+  - src/data/dialogue/index.ts (register 3 new dialogue trees)
+  - src/data/rooms/index.ts (register FORBIDDEN_ZONE)
+  - src/data/rooms/colony-gathering.ts (add south exit to forbidden-zone)
+  - src/scenes/BootScene.ts (preload bg-forbidden-zone)
+  - src/scenes/GameScene.ts (handleUseProbe + startProbeCutsceneChain methods)
+  - scripts/generate-placeholders.js (forbidden zone background generation)
+  - prd.json (US-030 passes: true)
+- **Learnings for future iterations:**
+  - Multi-stage cutscenes can be chained via dialogue:end event listeners — use flag guards to ensure correct dialogue triggers (check flag set by dialogue action before proceeding)
+  - Always call events.off() to deregister one-shot dialogue:end listeners after they fire, preventing stale handlers
+  - The probe pattern puzzle demonstrates the full PatternDisplay → PatternInput pipeline integration in a real gameplay context
+  - Custom action handlers (like useProbe) support multi-state interactions — check flags in order from most-progressed to least-progressed state
+  - Forbidden Zone has no NPCs in characters[] — Riptide/Frost appearances are handled narratively through dialogue text rather than spawning NPC entities
 ---

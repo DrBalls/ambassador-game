@@ -1052,4 +1052,158 @@ const shoreDutyBuffer = createPNG(320, 200, (x, y) => {
 });
 savePNG('public/assets/backgrounds/shore-duty.png', shoreDutyBuffer);
 
+// 17. Forbidden Zone background: 320x200 — twisted ice, melted circle with probe, steam
+// The alien crash site — a dangerous area where the probe landed, surrounded by warped ice.
+const FORBIDDEN_COLORS = {
+  skyTop: { r: 8, g: 5, b: 20 },            // Very dark sky
+  skyMid: { r: 25, g: 15, b: 45 },          // Dark purple
+  skyBottom: { r: 50, g: 30, b: 70 },       // Bruised purple
+  iceGround: { r: 140, g: 160, b: 190 },    // Normal ice
+  iceShadow: { r: 80, g: 95, b: 130 },      // Ice shadow
+  twistedIce: { r: 100, g: 115, b: 155 },   // Warped ice pillars
+  twistedIceDark: { r: 60, g: 75, b: 110 }, // Dark twisted ice
+  meltedCircle: { r: 50, g: 45, b: 55 },    // Melted rock/ice floor
+  meltedGlow: { r: 70, g: 55, b: 40 },      // Warm melted glow
+  probeBody: { r: 100, g: 110, b: 130 },    // Metallic probe body
+  probeHighlight: { r: 160, g: 180, b: 210 },// Probe shiny spot
+  probeDark: { r: 50, g: 55, b: 70 },       // Probe shadow
+  probeGlow: { r: 40, g: 200, b: 120 },     // Green probe glow
+  steamWhite: { r: 200, g: 210, b: 230 },   // Steam wisps
+};
+
+const forbiddenZoneBuffer = createPNG(320, 200, (x, y) => {
+  // Sky (top 40px) — dark, ominous
+  if (y < 40) {
+    const t = y / 40;
+    let r, g, b;
+    if (t < 0.5) {
+      const lt = t * 2;
+      r = Math.floor(FORBIDDEN_COLORS.skyTop.r + (FORBIDDEN_COLORS.skyMid.r - FORBIDDEN_COLORS.skyTop.r) * lt);
+      g = Math.floor(FORBIDDEN_COLORS.skyTop.g + (FORBIDDEN_COLORS.skyMid.g - FORBIDDEN_COLORS.skyTop.g) * lt);
+      b = Math.floor(FORBIDDEN_COLORS.skyTop.b + (FORBIDDEN_COLORS.skyMid.b - FORBIDDEN_COLORS.skyTop.b) * lt);
+    } else {
+      const lt = (t - 0.5) * 2;
+      r = Math.floor(FORBIDDEN_COLORS.skyMid.r + (FORBIDDEN_COLORS.skyBottom.r - FORBIDDEN_COLORS.skyMid.r) * lt);
+      g = Math.floor(FORBIDDEN_COLORS.skyMid.g + (FORBIDDEN_COLORS.skyBottom.g - FORBIDDEN_COLORS.skyMid.g) * lt);
+      b = Math.floor(FORBIDDEN_COLORS.skyMid.b + (FORBIDDEN_COLORS.skyBottom.b - FORBIDDEN_COLORS.skyMid.b) * lt);
+    }
+    return { r, g, b, a: 255 };
+  }
+
+  // Jagged horizon (y 40-50)
+  if (y < 50) {
+    const jagged = Math.sin(x * 0.12) * 3 + Math.sin(x * 0.3) * 2 + Math.cos(x * 0.07) * 2;
+    if (y < 42 + jagged) {
+      return { ...FORBIDDEN_COLORS.skyBottom, a: 255 };
+    }
+    // Twisted ice horizon
+    return { ...FORBIDDEN_COLORS.twistedIce, a: 255 };
+  }
+
+  // Twisted ice pillars (scattered warped ice columns)
+  const pillars = [
+    { cx: 30, baseY: 80, topY: 35, halfW: 8 },
+    { cx: 60, baseY: 85, topY: 40, halfW: 6 },
+    { cx: 260, baseY: 82, topY: 38, halfW: 7 },
+    { cx: 295, baseY: 78, topY: 32, halfW: 9 },
+    { cx: 90, baseY: 75, topY: 42, halfW: 5 },
+    { cx: 230, baseY: 80, topY: 44, halfW: 5 },
+  ];
+  for (const p of pillars) {
+    if (y >= p.topY && y < p.baseY) {
+      const t = (y - p.topY) / (p.baseY - p.topY);
+      // Twisted: sine wave offset
+      const twist = Math.sin((y - p.topY) * 0.15) * 3;
+      const width = p.halfW * (0.6 + t * 0.4);
+      if (Math.abs(x - p.cx - twist) <= width) {
+        if (x < p.cx + twist) {
+          return { ...FORBIDDEN_COLORS.twistedIce, a: 255 };
+        }
+        return { ...FORBIDDEN_COLORS.twistedIceDark, a: 255 };
+      }
+    }
+  }
+
+  // Central melted circle (impact crater) — ellipse centered at (160, 85), rx=50, ry=20
+  const craterCx = 160;
+  const craterCy = 85;
+  const craterRx = 50;
+  const craterRy = 20;
+  const craterDx = (x - craterCx) / craterRx;
+  const craterDy = (y - craterCy) / craterRy;
+  const craterDist = craterDx * craterDx + craterDy * craterDy;
+
+  if (craterDist < 1.0 && y >= 65) {
+    // Inside the melted crater
+    const edgeFade = Math.max(0, 1 - craterDist);
+
+    // Probe (metallic object at center) — ellipse at (160, 82), rx=16, ry=10
+    const probeDx = (x - 160) / 16;
+    const probeDy = (y - 82) / 10;
+    const probeDist = probeDx * probeDx + probeDy * probeDy;
+
+    if (probeDist < 1.0) {
+      // Probe surface with highlight
+      if (probeDx < -0.3 && probeDy < -0.2) {
+        return { ...FORBIDDEN_COLORS.probeHighlight, a: 255 };
+      }
+      if (probeDx > 0.4 || probeDy > 0.4) {
+        return { ...FORBIDDEN_COLORS.probeDark, a: 255 };
+      }
+      return { ...FORBIDDEN_COLORS.probeBody, a: 255 };
+    }
+
+    // Green glow around probe (ring between probe edge and further out)
+    if (probeDist < 1.8 && probeDist >= 1.0) {
+      const glowStrength = 1 - (probeDist - 1.0) / 0.8;
+      const r = Math.floor(FORBIDDEN_COLORS.meltedCircle.r + (FORBIDDEN_COLORS.probeGlow.r - FORBIDDEN_COLORS.meltedCircle.r) * glowStrength * 0.5);
+      const g = Math.floor(FORBIDDEN_COLORS.meltedCircle.g + (FORBIDDEN_COLORS.probeGlow.g - FORBIDDEN_COLORS.meltedCircle.g) * glowStrength * 0.5);
+      const b = Math.floor(FORBIDDEN_COLORS.meltedCircle.b + (FORBIDDEN_COLORS.probeGlow.b - FORBIDDEN_COLORS.meltedCircle.b) * glowStrength * 0.5);
+      return { r, g, b, a: 255 };
+    }
+
+    // Melted floor — slightly warm-tinted
+    const warmT = edgeFade * 0.3;
+    const r = Math.floor(FORBIDDEN_COLORS.meltedCircle.r + (FORBIDDEN_COLORS.meltedGlow.r - FORBIDDEN_COLORS.meltedCircle.r) * warmT);
+    const g = Math.floor(FORBIDDEN_COLORS.meltedCircle.g + (FORBIDDEN_COLORS.meltedGlow.g - FORBIDDEN_COLORS.meltedCircle.g) * warmT);
+    const b = Math.floor(FORBIDDEN_COLORS.meltedCircle.b + (FORBIDDEN_COLORS.meltedGlow.b - FORBIDDEN_COLORS.meltedCircle.b) * warmT);
+    return { r, g, b, a: 255 };
+  }
+
+  // Steam wisps (scattered above crater, y 55-75)
+  if (y >= 55 && y < 75 && x >= 120 && x < 200) {
+    const steamWave = Math.sin((x - 120) * 0.08 + y * 0.15) * 0.5 + Math.sin(x * 0.2 - y * 0.1) * 0.3;
+    if (steamWave > 0.3) {
+      const alphaT = (steamWave - 0.3) / 0.5;
+      const r = Math.floor(FORBIDDEN_COLORS.twistedIce.r + (FORBIDDEN_COLORS.steamWhite.r - FORBIDDEN_COLORS.twistedIce.r) * alphaT * 0.6);
+      const g = Math.floor(FORBIDDEN_COLORS.twistedIce.g + (FORBIDDEN_COLORS.steamWhite.g - FORBIDDEN_COLORS.twistedIce.g) * alphaT * 0.6);
+      const b = Math.floor(FORBIDDEN_COLORS.twistedIce.b + (FORBIDDEN_COLORS.steamWhite.b - FORBIDDEN_COLORS.twistedIce.b) * alphaT * 0.6);
+      return { r, g, b, a: 255 };
+    }
+  }
+
+  // Main ice ground surface (with warped/cracked texture)
+  const noiseVal = Math.sin(x * 0.2 + y * 0.1) * 0.3 + Math.sin(x * 0.08 + y * 0.18) * 0.3;
+  const depthT = Math.max(0, (y - 50) / 150);
+  const baseR = Math.floor(FORBIDDEN_COLORS.iceShadow.r + (FORBIDDEN_COLORS.iceGround.r - FORBIDDEN_COLORS.iceShadow.r) * (1 - depthT * 0.4));
+  const baseG = Math.floor(FORBIDDEN_COLORS.iceShadow.g + (FORBIDDEN_COLORS.iceGround.g - FORBIDDEN_COLORS.iceShadow.g) * (1 - depthT * 0.4));
+  const baseB = Math.floor(FORBIDDEN_COLORS.iceShadow.b + (FORBIDDEN_COLORS.iceGround.b - FORBIDDEN_COLORS.iceShadow.b) * (1 - depthT * 0.4));
+
+  // Cracks radiating from crater
+  const angleToCrater = Math.atan2(y - craterCy, x - craterCx);
+  const distToCrater = Math.sqrt((x - craterCx) * (x - craterCx) + (y - craterCy) * (y - craterCy));
+  const crackPattern = Math.sin(angleToCrater * 8) * 0.5;
+  let crackDarken = 0;
+  if (distToCrater > 30 && distToCrater < 80 && Math.abs(crackPattern) < 0.1) {
+    crackDarken = 20;
+  }
+
+  const texR = Math.max(0, Math.min(255, Math.floor(baseR + noiseVal * 12 - crackDarken)));
+  const texG = Math.max(0, Math.min(255, Math.floor(baseG + noiseVal * 12 - crackDarken)));
+  const texB = Math.max(0, Math.min(255, Math.floor(baseB + noiseVal * 8 - crackDarken)));
+
+  return { r: texR, g: texG, b: texB, a: 255 };
+});
+savePNG('public/assets/backgrounds/forbidden-zone.png', forbiddenZoneBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');
