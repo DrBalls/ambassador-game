@@ -3,6 +3,7 @@ import { GAME_WIDTH } from '../constants';
 import { VerbSystem } from '../systems/VerbSystem';
 import { SentenceLineSystem } from '../systems/SentenceLineSystem';
 import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
+import { WalkSystem } from '../systems/WalkSystem';
 import { ItemDefinition } from '../data/items';
 import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
@@ -30,12 +31,16 @@ export class GameScene extends Phaser.Scene {
   private isTransitioning = false;
   private player!: Player;
   private walkablePolygon: Phaser.Geom.Polygon | null = null;
+  private walkSystem!: WalkSystem;
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
   create(): void {
+    // Initialize walk system (covers the 320x120 viewport area)
+    this.walkSystem = new WalkSystem(this, GAME_WIDTH, VIEWPORT_HEIGHT);
+
     // Load the test room (future: room ID will come from game state)
     this.loadRoom('test-room');
 
@@ -45,6 +50,12 @@ export class GameScene extends Phaser.Scene {
     // Handle click-to-walk: pointer down in the viewport area
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.handleViewportClick(pointer);
+    });
+
+    // F1 key toggles walkable area debug overlay
+    this.input.keyboard?.on('keydown-F1', () => {
+      const visible = this.walkSystem.toggleDebug();
+      console.log(`Walk debug overlay: ${visible ? 'ON' : 'OFF'}`);
     });
 
     // Initialize UI systems in order (bottom to top visually, but create order doesn't matter)
@@ -204,9 +215,10 @@ export class GameScene extends Phaser.Scene {
       this.roomBackground = null;
     }
 
-    // Clear previous hotspots and exit zones
+    // Clear previous hotspots, exit zones, and debug overlay
     this.clearHotspots();
     this.clearExitZones();
+    this.walkSystem.clearDebug();
 
     this.currentRoom = room;
 
@@ -219,6 +231,8 @@ export class GameScene extends Phaser.Scene {
     if (room.walkableArea.length >= 3) {
       const phaserPoints = room.walkableArea.map(p => new Phaser.Geom.Point(p.x, p.y));
       this.walkablePolygon = new Phaser.Geom.Polygon(phaserPoints);
+      // Build navigation grid for A* pathfinding
+      this.walkSystem.buildGrid(room.walkableArea);
     } else {
       this.walkablePolygon = null;
     }
@@ -378,6 +392,7 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Handle a click in the viewport area for walking.
+   * Uses A* pathfinding to navigate around obstacles.
    * Only triggers when WALK verb is selected and the click is in the viewport.
    */
   private handleViewportClick(pointer: Phaser.Input.Pointer): void {
@@ -389,17 +404,30 @@ export class GameScene extends Phaser.Scene {
     // Only handle clicks in the viewport area (above UI)
     if (pointer.y >= VIEWPORT_HEIGHT) return;
 
-    const targetX = pointer.x;
-    const targetY = pointer.y;
+    let targetX = pointer.x;
+    let targetY = pointer.y;
 
-    if (this.isPointInWalkableArea(targetX, targetY)) {
-      this.player.walkTo(targetX, targetY);
-    } else {
-      // Find the nearest walkable point
+    // If click is outside walkable area, clamp to nearest walkable point
+    if (!this.isPointInWalkableArea(targetX, targetY)) {
       const clamped = this.clampToWalkableArea(targetX, targetY);
-      if (clamped) {
-        this.player.walkTo(clamped.x, clamped.y);
-      }
+      if (!clamped) return;
+      targetX = clamped.x;
+      targetY = clamped.y;
+    }
+
+    // Use A* pathfinding to find a path
+    const path = this.walkSystem.findPath(
+      this.player.getX(), this.player.getY(),
+      targetX, targetY
+    );
+
+    if (path && path.length >= 2) {
+      this.player.followPath(path);
+    } else if (path && path.length === 1) {
+      // Already at destination
+    } else {
+      // Fallback: direct walk (no path found, shouldn't normally happen)
+      this.player.walkTo(targetX, targetY);
     }
   }
 

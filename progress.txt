@@ -351,11 +351,17 @@ Started: 2026-01-28
   - flipX handles facing direction — no need for separate left/right sprite art
   - Player created AFTER loadRoom() in GameScene.create() so it renders on top of background
 - Walk sprite sheet: separate texture from idle (player-walk-sheet, 4 frames at 8fps)
-- Walk system: Player.walkTo(x,y) starts movement, Player.updateMovement(delta) per frame, Player.stopWalking() to stop
+- Walk system: Player.walkTo(x,y) for single-point, Player.followPath(points) for multi-waypoint A* paths
+- Walk system: Player.updateMovement(delta) per frame advances through path queue; Player.stopWalking() clears queue
 - Walkable area: Phaser.Geom.Polygon built from room.walkableArea points; use Polygon.Contains() for hit testing
 - Click-to-walk: GameScene.handleViewportClick() checks WALK verb, viewport bounds (Y < 120), and walkable polygon
 - Boundary clamping: clampToWalkableArea() projects point onto nearest polygon edge segment for clicks outside walkable area
 - VIEWPORT_HEIGHT constant (120) defines the gameplay area above UI panels
+- Pathfinding: src/systems/WalkSystem.ts with grid-based A* (4px cells, 8-directional movement, diagonal corner-cutting prevention)
+- WalkSystem.buildGrid(walkableArea) rasterizes polygon to boolean grid — call on each room load
+- WalkSystem.findPath(sx,sy,gx,gy) returns smoothed Point[] path or null; includes line-of-sight path smoothing
+- WalkSystem.toggleDebug() toggles F1 walkable grid overlay (green=walkable, red=blocked)
+- WalkSystem.clearDebug() must be called on room change to clean up graphics
 
 ---
 
@@ -386,4 +392,31 @@ Started: 2026-01-28
   - handleViewportClick() checks: not transitioning, WALK verb active, Y < VIEWPORT_HEIGHT (120px)
   - Player.playAnimation(key, false) with ignoreIfPlaying=false forces animation switch between idle↔walk
   - Synthetic PointerEvents with `composed: true, isPrimary: true` plus full event chain (pointerdown/mousedown/pointerup/mouseup/click) DO reach Phaser's input manager in browser tests
+---
+
+## 2026-01-28 - US-015: Add Pathfinding
+- What was implemented:
+  - Created src/systems/WalkSystem.ts with grid-based A* pathfinding
+  - Navigation grid: 4px cell size rasterizes walkable polygon into 80x30 boolean grid (320x120 viewport)
+  - A* uses 8-directional movement with octile distance heuristic and diagonal corner-cutting prevention
+  - Path smoothing via line-of-sight optimization (Bresenham's line algorithm on grid)
+  - Nearest-walkable-cell BFS for handling goals outside walkable area
+  - Updated Player to support multi-waypoint path following via followPath(Point[])
+  - Player.pathQueue stores remaining waypoints; updateMovement() advances through them
+  - Integrated WalkSystem into GameScene: buildGrid() on room load, findPath() on click
+  - F1 key toggles debug overlay showing walkable grid (green=walkable, red=blocked, grid lines)
+  - Debug overlay cleared on room change, rebuilt on grid rebuild if visible
+- Files changed:
+  - src/systems/WalkSystem.ts (new - A* pathfinding, nav grid, debug overlay)
+  - src/entities/Player.ts (added followPath, pathQueue, updated updateMovement for waypoint chaining)
+  - src/scenes/GameScene.ts (WalkSystem integration, F1 debug key, pathfinding in handleViewportClick)
+  - prd.json (US-015 passes: true)
+- **Learnings for future iterations:**
+  - Grid-based A* at 4px cells is fast enough for 320x120 viewport — 2,400 cells, no performance concern
+  - Diagonal corner-cutting prevention: check both adjacent cardinal cells before allowing diagonal move
+  - Path smoothing by skipping intermediate waypoints with line-of-sight check reduces path jitter significantly
+  - Player.followPath() skips first waypoint (current position) and chains remaining via pathQueue
+  - WalkSystem.buildGrid() must be called on each room load after walkablePolygon is set
+  - WalkSystem.clearDebug() must be called on room change to destroy old Graphics object
+  - The existing clampToWalkableArea() still works for boundary projection before A* runs
 ---

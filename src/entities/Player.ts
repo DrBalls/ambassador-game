@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Character } from './Character';
+import { Point } from '../data/rooms';
 
 /**
  * Sprite sheet and animation configuration for the player
@@ -32,11 +33,14 @@ export const PLAYER_CONFIG = {
  * - Idle animation (2 frames, 500ms each)
  * - Walk animation (4 frames, ~8 fps)
  * - Click-to-walk movement toward a target position
+ * - Multi-waypoint path following for A* pathfinding
  * - Facing direction tracking based on movement
  */
 export class Player extends Character {
   private walkTarget: { x: number; y: number } | null = null;
   private isWalking = false;
+  /** Remaining waypoints in the current path (excluding current target) */
+  private pathQueue: Point[] = [];
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, PLAYER_CONFIG.textureKey, 0);
@@ -78,8 +82,10 @@ export class Player extends Character {
 
   /**
    * Set a walk target. The player will move toward this position each update().
+   * Clears any existing path queue (used for direct single-point walking).
    */
   walkTo(x: number, y: number): void {
+    this.pathQueue = [];
     this.walkTarget = { x, y };
     if (!this.isWalking) {
       this.isWalking = true;
@@ -89,10 +95,33 @@ export class Player extends Character {
   }
 
   /**
+   * Follow a multi-waypoint path. The player walks to each waypoint in sequence.
+   * The first waypoint is the player's current position (skipped).
+   */
+  followPath(path: Point[]): void {
+    if (path.length < 2) return;
+
+    // Skip the first point (current position), queue the rest
+    const remaining = path.slice(1);
+    const first = remaining.shift();
+    if (!first) return;
+
+    this.pathQueue = remaining;
+    this.walkTarget = { x: first.x, y: first.y };
+
+    if (!this.isWalking) {
+      this.isWalking = true;
+      this.playAnimation(PLAYER_CONFIG.anims.walk, false);
+    }
+    this.faceToward(first.x);
+  }
+
+  /**
    * Stop walking and return to idle animation.
    */
   stopWalking(): void {
     this.walkTarget = null;
+    this.pathQueue = [];
     if (this.isWalking) {
       this.isWalking = false;
       this.playAnimation(PLAYER_CONFIG.anims.idle, false);
@@ -108,7 +137,7 @@ export class Player extends Character {
 
   /**
    * Update movement each frame. Call from GameScene.update().
-   * Returns true if the player reached the destination this frame.
+   * Returns true if the player reached the final destination this frame.
    */
   updateMovement(delta: number): boolean {
     if (!this.walkTarget || !this.isWalking) return false;
@@ -121,13 +150,23 @@ export class Player extends Character {
     const step = PLAYER_CONFIG.walkSpeed * (delta / 1000);
 
     if (distance <= step) {
-      // Arrived at destination
+      // Arrived at current waypoint
       this.setPosition(this.walkTarget.x, this.walkTarget.y);
+
+      // Check if there are more waypoints in the path queue
+      const nextWaypoint = this.pathQueue.shift();
+      if (nextWaypoint) {
+        this.walkTarget = { x: nextWaypoint.x, y: nextWaypoint.y };
+        this.faceToward(nextWaypoint.x);
+        return false; // Not at final destination yet
+      }
+
+      // Path complete
       this.stopWalking();
       return true;
     }
 
-    // Move toward target
+    // Move toward current waypoint
     const nx = dx / distance;
     const ny = dy / distance;
     this.setPosition(this.getX() + nx * step, this.getY() + ny * step);

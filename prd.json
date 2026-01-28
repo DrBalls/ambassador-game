@@ -271,7 +271,7 @@
         "Verify in browser: place obstacle in path, Pip walks around it. F1 shows mesh"
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
