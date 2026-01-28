@@ -12,6 +12,8 @@ Started: 2026-01-28
 - Source novel: the_smallest_ambassador_rev7.md
 - Scenes are separate files in src/scenes/ importing from src/constants.ts
 - Scene transitions use this.scene.start('SceneKey') to switch scenes
+- Asset paths: relative to public/ folder (e.g., 'assets/sprites/character.png')
+- Asset loading: this.load.image() in preload(), this.add.image() in create()
 
 ---
 
@@ -92,4 +94,28 @@ Started: 2026-01-28
   - Debouncing resize events (100ms) prevents excessive recalculations during window dragging
   - game.scale.setZoom() dynamically changes scale without recreating the game
   - game.events.once('ready') is the right time to access game.canvas
+---
+
+## 2026-01-28 - US-004: Add Placeholder Assets Structure
+- What was implemented:
+  - Created asset directory structure: public/assets/{sprites,backgrounds,ui,portraits,fonts,audio/{music,sfx}}
+  - Generated placeholder 320x200 PNG background with blue (#292942) grid pattern (16px intervals)
+  - Generated placeholder 32x48 character sprite (simple penguin with white eyes, orange beak)
+  - Generated placeholder 16x16 UI button sprite with 3D bevel effect
+  - Created scripts/generate-placeholders.js using pngjs for procedural PNG generation
+  - Updated BootScene.preload() to load all three placeholder assets
+  - Updated GameScene to display loaded assets for visual verification
+- Files changed:
+  - public/assets/backgrounds/placeholder.png (new - 320x200 grid background)
+  - public/assets/sprites/character.png (new - 32x48 penguin sprite)
+  - public/assets/ui/button.png (new - 16x16 button)
+  - scripts/generate-placeholders.js (new - asset generator script)
+  - src/scenes/BootScene.ts (added asset preloading)
+  - src/scenes/GameScene.ts (displays loaded assets)
+  - package.json (added pngjs dev dependency)
+- **Learnings for future iterations:**
+  - Asset paths in Vite are relative to public/ folder (e.g., 'assets/sprites/foo.png')
+  - Phaser images default to center origin; use .setOrigin(0, 0) for backgrounds
+  - Use this.load.image('key', 'path') in preload(), then this.add.image(x, y, 'key') in create()
+  - pngjs is useful for generating simple placeholder assets programmatically
 ---
