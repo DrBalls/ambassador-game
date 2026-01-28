@@ -342,4 +342,105 @@ const portraitBubbleBuffer = createPNG(48, 48, (x, y) => {
 });
 savePNG('public/assets/portraits/bubble.png', portraitBubbleBuffer);
 
+// 9. Pattern Elements sprite sheet: 7 frames (32x32 each) → 224x32 total
+// Each frame is a colored shape icon representing one of the Seven Sacred Elements:
+// Frame 0: Ice-White Dot, Frame 1: Deep-Blue Line, Frame 2: Aurora-Green Triangle,
+// Frame 3: Sunset-Orange Square, Frame 4: Shadow-Purple Pentagon,
+// Frame 5: Starlight-Silver Hexagon, Frame 6: Quantum-Gold Heptagon
+const ELEMENT_COLORS = [
+  { r: 232, g: 240, b: 255 }, // 0: ice-white
+  { r: 26, g: 58, b: 138 },   // 1: deep-blue
+  { r: 42, g: 255, b: 106 },  // 2: aurora-green
+  { r: 255, g: 106, b: 42 },  // 3: sunset-orange
+  { r: 138, g: 42, b: 170 },  // 4: shadow-purple
+  { r: 192, g: 200, b: 224 }, // 5: starlight-silver
+  { r: 255, g: 215, b: 0 },   // 6: quantum-gold
+];
+
+/**
+ * Draw a regular polygon with N sides centered at (cx, cy) with given radius.
+ * Returns true if point (px, py) is inside the polygon.
+ */
+function isInsideRegularPolygon(px, py, cx, cy, radius, sides, rotation) {
+  // Generate polygon vertices
+  const vertices = [];
+  for (let i = 0; i < sides; i++) {
+    const angle = rotation + (2 * Math.PI * i) / sides;
+    vertices.push({
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle),
+    });
+  }
+  // Point-in-polygon test (ray casting)
+  let inside = false;
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const vi = vertices[i];
+    const vj = vertices[j];
+    if ((vi.y > py) !== (vj.y > py) &&
+        px < ((vj.x - vi.x) * (py - vi.y)) / (vj.y - vi.y) + vi.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+const patternElementsBuffer = createPNG(224, 32, (x, y) => {
+  const frame = Math.floor(x / 32);
+  const localX = x % 32;
+  const cx = 16; // Center of 32x32 frame
+  const cy = 16;
+  const color = ELEMENT_COLORS[frame];
+  const bg = { r: 20, g: 20, b: 40 }; // Dark background matching UI theme
+
+  // Distance from center
+  const dx = localX - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Draw a 1px border around each frame cell
+  const isBorder = localX === 0 || localX === 31 || y === 0 || y === 31;
+  if (isBorder) {
+    return { r: 40, g: 40, b: 60, a: 255 };
+  }
+
+  let isShape = false;
+
+  switch (frame) {
+    case 0: // Dot (filled circle, radius 6)
+      isShape = dist <= 6;
+      break;
+
+    case 1: // Line (horizontal bar, 20x4)
+      isShape = localX >= 6 && localX < 26 && y >= 14 && y < 18;
+      break;
+
+    case 2: // Triangle (equilateral, pointing up)
+      isShape = isInsideRegularPolygon(localX, y, cx, cy + 2, 11, 3, -Math.PI / 2);
+      break;
+
+    case 3: // Square (axis-aligned, 16x16)
+      isShape = localX >= 8 && localX < 24 && y >= 8 && y < 24;
+      break;
+
+    case 4: // Pentagon (pointing up)
+      isShape = isInsideRegularPolygon(localX, y, cx, cy, 11, 5, -Math.PI / 2);
+      break;
+
+    case 5: // Hexagon (flat top)
+      isShape = isInsideRegularPolygon(localX, y, cx, cy, 12, 6, 0);
+      break;
+
+    case 6: // Heptagon (pointing up)
+      isShape = isInsideRegularPolygon(localX, y, cx, cy, 12, 7, -Math.PI / 2);
+      break;
+  }
+
+  if (isShape) {
+    return { ...color, a: 255 };
+  }
+
+  return { ...bg, a: 255 };
+});
+savePNG('public/assets/sprites/pattern-elements.png', patternElementsBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

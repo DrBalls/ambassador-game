@@ -47,6 +47,11 @@ Started: 2026-01-28
 - Speaker portraits: SPEAKER_PORTRAITS registry in src/data/npcs.ts maps speaker names to portrait texture keys + asset paths
 - Portrait loading: BootScene iterates SPEAKER_PORTRAITS to preload all portrait images
 - NPCDefinition.portraitKey / portraitPath: Each NPC carries portrait asset metadata alongside sprite sheet metadata
+- Pattern puzzle system: src/systems/PatternPuzzle.ts defines SACRED_ELEMENTS array (7 elements indexed by base-7 digit)
+- Pattern sprite config: PATTERN_SPRITE_CONFIG for texture key, asset path, frame dimensions (follows PLAYER_CONFIG pattern)
+- Pattern element data: SacredElement includes index, color, tone, shape, colorHex, colorRGB, toneFrequency
+- Pattern enums: PatternColor, PatternTone, PatternShape for type-safe puzzle sequences
+- Pattern lookups: getSacredElement(index) returns element by base-7 digit, getElementFrameIndex(element) returns sprite frame
 
 ---
 
@@ -683,4 +688,32 @@ Started: 2026-01-28
   - PauseScene depth layer: overlay=300, panel border=301, panel=302, text/slots=303, feedback=304 — above DialogueSystem's 200
   - Save slot display uses toLocaleDateString with month/day/time format for compact timestamps
   - ESC key context matters: in main view it resumes, in sub-views it navigates back (dual-purpose)
+---
+
+## 2026-01-28 - US-024: Define Seven Sacred Elements
+- What was implemented:
+  - Created src/systems/PatternPuzzle.ts with complete base-7 element definitions
+  - 7 colors defined: ice-white (#e8f0ff), deep-blue (#1a3a8a), aurora-green (#2aff6a), sunset-orange (#ff6a2a), shadow-purple (#8a2aaa), starlight-silver (#c0c8e0), quantum-gold (#ffd700)
+  - 7 tones defined: C4 (261.63Hz), D4 (293.66Hz), E4 (329.63Hz), F4 (349.23Hz), G4 (392.0Hz), A4 (440.0Hz), B4 (493.88Hz)
+  - 7 shapes defined: dot, line, triangle, square, pentagon, hexagon, heptagon
+  - SacredElement interface combines index, color, tone, shape, colorHex, colorRGB, and toneFrequency
+  - SACRED_ELEMENTS array indexed by base-7 digit (0-6)
+  - PATTERN_SPRITE_CONFIG for centralized asset metadata (follows PLAYER_CONFIG pattern)
+  - Generated 224x32 sprite sheet (7 frames × 32x32) with colored shape icons
+  - Each shape procedurally drawn: dot=circle, line=bar, triangle/square/pentagon/hexagon/heptagon via polygon rendering
+  - BootScene updated to preload pattern-elements sprite sheet
+- Files changed:
+  - src/systems/PatternPuzzle.ts (new - sacred element definitions, enums, sprite config, lookup functions)
+  - scripts/generate-placeholders.js (added pattern elements sprite sheet generation with polygon hit testing)
+  - public/assets/sprites/pattern-elements.png (new - 7-frame shape icon sprite sheet)
+  - src/scenes/BootScene.ts (added pattern elements sprite sheet loading)
+  - prd.json (US-024 passes: true)
+- **Learnings for future iterations:**
+  - SACRED_ELEMENTS array is indexed by base-7 digit — SACRED_ELEMENTS[n] gives the element for digit n
+  - Each SacredElement carries both rendering data (colorHex/colorRGB) and audio data (toneFrequency) for self-contained usage
+  - PATTERN_SPRITE_CONFIG follows PLAYER_CONFIG naming pattern — import in BootScene for loading, in puzzle systems for rendering
+  - Pattern sprite sheet uses isInsideRegularPolygon() with ray-casting for arbitrary N-sided shapes
+  - Polygon shapes use -Math.PI/2 rotation to point upward (standard math orientation has 0 pointing right)
+  - PatternColor, PatternTone, PatternShape enums provide type safety for pattern sequences
+  - getSacredElement(index) and getElementFrameIndex(element) are the primary lookup/rendering functions
 ---

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { PLAYER_CONFIG } from '../entities/Player';
 import { NPC_DEFINITIONS, SPEAKER_PORTRAITS } from '../data/npcs';
+import { PATTERN_SPRITE_CONFIG } from '../systems/PatternPuzzle';
 
 /**
  * BootScene - Initial loading scene
@@ -43,6 +44,16 @@ export class BootScene extends Phaser.Scene {
     for (const portrait of Object.values(SPEAKER_PORTRAITS)) {
       this.load.image(portrait.key, portrait.path);
     }
+
+    // Load pattern puzzle elements sprite sheet (7 frames, 32x32 each)
+    this.load.spritesheet(
+      PATTERN_SPRITE_CONFIG.textureKey,
+      PATTERN_SPRITE_CONFIG.assetPath,
+      {
+        frameWidth: PATTERN_SPRITE_CONFIG.frameWidth,
+        frameHeight: PATTERN_SPRITE_CONFIG.frameHeight,
+      }
+    );
 
     // Load UI elements
     this.load.image('ui-button', 'assets/ui/button.png');
