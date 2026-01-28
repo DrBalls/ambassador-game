@@ -6,6 +6,7 @@ import { InventorySystem, InventoryItem } from '../systems/InventorySystem';
 import { WalkSystem } from '../systems/WalkSystem';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { GameState } from '../systems/GameState';
+import { SaveSystem } from '../systems/SaveSystem';
 import { ItemDefinition } from '../data/items';
 import { RoomData, HotspotData, HotspotCallback, ExitData, Point, getRoom } from '../data/rooms';
 import { Hotspot } from '../entities/Hotspot';
@@ -29,6 +30,7 @@ export class GameScene extends Phaser.Scene {
   private inventorySystem!: InventorySystem;
   private dialogueSystem!: DialogueSystem;
   private gameState!: GameState;
+  private saveSystem!: SaveSystem;
   private feedbackText!: Phaser.GameObjects.Text;
   private currentRoom: RoomData | null = null;
   private roomBackground: Phaser.GameObjects.Image | null = null;
@@ -83,6 +85,9 @@ export class GameScene extends Phaser.Scene {
 
     // Initialize game state manager (singleton, tracks room/position/inventory/flags/quests)
     this.gameState = new GameState(this);
+
+    // Initialize save system (must be after GameState so it can listen for room changes)
+    this.saveSystem = new SaveSystem(this);
 
     // Track initial room and player position in GameState
     if (this.currentRoom) {
@@ -177,8 +182,10 @@ export class GameScene extends Phaser.Scene {
 
     // Expose systems globally for console testing
     // Usage: window.gameState.getSnapshot(), window.gameState.setFlag('test', true), etc.
+    // Usage: window.saveSystem.saveToSlot(1), window.saveSystem.getSlotInfo(), etc.
     (window as unknown as { gameState: GameState }).gameState = this.gameState;
     (window as unknown as { testInventory: InventorySystem }).testInventory = this.inventorySystem;
+    (window as unknown as { saveSystem: SaveSystem }).saveSystem = this.saveSystem;
   }
 
   /**
@@ -275,6 +282,13 @@ export class GameScene extends Phaser.Scene {
    */
   getGameState(): GameState {
     return this.gameState;
+  }
+
+  /**
+   * Get the save system for external access
+   */
+  getSaveSystem(): SaveSystem {
+    return this.saveSystem;
   }
 
   /**

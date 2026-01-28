@@ -389,6 +389,9 @@ Started: 2026-01-28
 - GameState serialization: getSnapshot() / loadSnapshot(snapshot) for save/load; GameStateSnapshot interface
 - GameState console access: window.gameState exposed for debugging (getSnapshot, setFlag, hasItem, etc.)
 - Item definitions: Add new items to ITEM_DEFINITIONS in src/data/items.ts before referencing them in dialogue giveItem actions
+- SaveSystem: src/systems/SaveSystem.ts — 3 slots (0-2), auto-saves slot 0 on room transitions, uses localStorage with 'ambassador-save-slot-' prefix
+- SaveSystem: saveToSlot(n)/loadSlot(n) for manual save/load; getSlotInfo() returns slot summaries; hasSaveData() for "Continue" button visibility
+- SaveSystem: SaveSlotData wraps GameStateSnapshot with timestamp and roomName metadata
 
 ---
 
@@ -618,4 +621,30 @@ Started: 2026-01-28
   - GameStateSnapshot is the serialization format — use getSnapshot()/loadSnapshot() for save/load (US-022)
   - DialogueSystem condition checking now goes through GameState singleton — no more local flag storage needed
   - window.gameState exposed for console testing: getSnapshot(), setFlag(), hasItem(), addItem(), removeItem(), etc.
+---
+
+## 2026-01-28 - US-022: Save to LocalStorage
+- What was implemented:
+  - Created src/systems/SaveSystem.ts with localStorage-based save/load
+  - Three save slots (0, 1, 2) with 'ambassador-save-slot-' key prefix
+  - SaveSlotData interface wraps GameStateSnapshot with timestamp and roomName metadata
+  - Auto-save to slot 0 on room transitions via 'gamestate:roomChanged' event
+  - saveToSlot(n) / loadSlot(n) for manual save/load per slot
+  - hasSlotData(n) checks if a slot has data
+  - getSlotInfo() returns summaries for all 3 slots (for save/load menu UI)
+  - hasSaveData() returns true if any slot has data (for "Continue" button visibility)
+  - Integrated SaveSystem into GameScene with accessor getSaveSystem()
+  - Exposed window.saveSystem for console debugging/verification
+- Files changed:
+  - src/systems/SaveSystem.ts (new - save/load system with localStorage)
+  - src/scenes/GameScene.ts (SaveSystem integration, accessor, console exposure)
+  - prd.json (US-022 passes: true)
+  - progress.txt (updated codebase patterns, appended progress)
+- **Learnings for future iterations:**
+  - SaveSystem listens to 'gamestate:roomChanged' for auto-save — decoupled from transition logic
+  - SaveSlotData separates metadata (timestamp, roomName) from game data (GameStateSnapshot) — allows save format evolution
+  - hasSaveData() is designed for US-031 (Title Screen) "Continue" button conditional display
+  - loadSlot() returns SaveSlotData (not just snapshot) so the menu can show timestamp/room info
+  - SaveSystem must be initialized AFTER GameState in GameScene.create() since it depends on GameState.getInstance()
+  - window.saveSystem.saveToSlot(1), window.saveSystem.getSlotInfo() for console verification
 ---

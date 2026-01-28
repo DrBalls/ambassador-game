@@ -389,7 +389,7 @@
         "Verify in browser: play, close tab, reopen, confirm state is saved in localStorage"
       ],
       "priority": 22,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
