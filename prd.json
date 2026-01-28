@@ -406,7 +406,7 @@
         "Verify in browser: save to slot 2, quit, load slot 2, game state restored"
       ],
       "priority": 23,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

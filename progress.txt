@@ -392,6 +392,11 @@ Started: 2026-01-28
 - SaveSystem: src/systems/SaveSystem.ts — 3 slots (0-2), auto-saves slot 0 on room transitions, uses localStorage with 'ambassador-save-slot-' prefix
 - SaveSystem: saveToSlot(n)/loadSlot(n) for manual save/load; getSlotInfo() returns slot summaries; hasSaveData() for "Continue" button visibility
 - SaveSystem: SaveSlotData wraps GameStateSnapshot with timestamp and roomName metadata
+- PauseScene: src/scenes/PauseScene.ts — overlay scene launched with scene.launch() + scene.pause('GameScene'), NOT scene.start()
+- Pause menu: ESC key in GameScene launches PauseScene; ESC in PauseScene resumes (main view) or goes back (sub-views)
+- Overlay scenes: Use scene.pause/resume to freeze/unfreeze the underlying scene while overlay runs on top
+- Load game flow: PauseScene loads snapshot into GameState singleton → stops both scenes → starts GameScene fresh (create() reads from existing singleton)
+- GameScene restore: On create(), checks GameState.getInstance() for existing room/position data to support both fresh start and save-load restart
 
 ---
 
@@ -647,4 +652,35 @@ Started: 2026-01-28
   - loadSlot() returns SaveSlotData (not just snapshot) so the menu can show timestamp/room info
   - SaveSystem must be initialized AFTER GameState in GameScene.create() since it depends on GameState.getInstance()
   - window.saveSystem.saveToSlot(1), window.saveSystem.getSlotInfo() for console verification
+---
+
+## 2026-01-28 - US-023: Load Game and Save Menu
+- What was implemented:
+  - Created src/scenes/PauseScene.ts as overlay pause menu (launched with scene.launch, not scene.start)
+  - ESC key in GameScene pauses game and launches PauseScene as overlay
+  - Main menu view: Resume, Save Game, Load Game, Quit to Menu
+  - Save Game sub-view: 3 clickable slots showing room name and timestamp (or "- Empty -")
+  - Load Game sub-view: 3 clickable slots, clicking a filled slot restores full game state
+  - Save feedback: "Saved to Slot N!" message, slots refresh after 800ms to show updated data
+  - Load flow: GameState.loadSnapshot() → stop both scenes → start GameScene fresh (reads from singleton)
+  - Quit to Menu: stops GameScene and PauseScene, starts MenuScene
+  - ESC in sub-views goes back to main menu; ESC in main menu resumes game
+  - GameScene.create() now checks for existing GameState singleton to support save-load restarts
+  - Inventory restoration: on scene restart, saved inventory items are pushed into new InventorySystem
+  - Registered PauseScene in main.ts scene config array
+- Files changed:
+  - src/scenes/PauseScene.ts (new - overlay pause menu with save/load/quit)
+  - src/scenes/GameScene.ts (ESC key handler, GameState restore logic on create)
+  - src/main.ts (registered PauseScene in scene config)
+  - prd.json (US-023 passes: true)
+  - progress.txt (updated codebase patterns, appended progress)
+- **Learnings for future iterations:**
+  - Phaser overlay scenes: scene.launch() runs in parallel, scene.pause() freezes the underlying scene — use for pause menus
+  - scene.get('SceneName') accesses a paused scene's public methods (e.g., getSaveSystem()) — paused ≠ destroyed
+  - GameState singleton persists across scene stop/start cycles — no need for Phaser scene data passing
+  - On load, stop both PauseScene and GameScene, then start GameScene — create() reads room/position from existing singleton
+  - InventorySystem has no state persistence of its own — on scene restart, items must be manually pushed from GameState
+  - PauseScene depth layer: overlay=300, panel border=301, panel=302, text/slots=303, feedback=304 — above DialogueSystem's 200
+  - Save slot display uses toLocaleDateString with month/day/time format for compact timestamps
+  - ESC key context matters: in main view it resumes, in sub-views it navigates back (dual-purpose)
 ---

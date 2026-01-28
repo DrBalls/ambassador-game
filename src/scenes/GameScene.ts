@@ -51,13 +51,21 @@ export class GameScene extends Phaser.Scene {
     // Initialize walk system (covers the 320x120 viewport area)
     this.walkSystem = new WalkSystem(this, GAME_WIDTH, VIEWPORT_HEIGHT);
 
-    // Load the test room (future: room ID will come from game state)
-    this.loadRoom('test-room');
+    // Check if GameState already has a loaded snapshot (from save/load)
+    const existingState = GameState.getInstance();
+    const restoredRoomId = existingState?.getCurrentRoomId();
+    const restoredPosition = existingState?.getPlayerPosition();
 
-    // Create the player character in center of viewport (bottom-center origin, so Y=100 puts feet near bottom of walkable area)
-    this.player = new Player(this, GAME_WIDTH / 2, 100);
-    // Track initial player position in GameState (after loadRoom so gameState may exist)
-    // GameState will be initialized later in create(), so defer position tracking to after init
+    // Determine initial room and player position
+    const startRoomId = restoredRoomId ?? 'test-room';
+    const startX = restoredPosition && restoredRoomId ? restoredPosition.x : GAME_WIDTH / 2;
+    const startY = restoredPosition && restoredRoomId ? restoredPosition.y : 100;
+
+    // Load the starting room
+    this.loadRoom(startRoomId);
+
+    // Create the player character at initial position
+    this.player = new Player(this, startX, startY);
 
     // Handle click-to-walk: pointer down in the viewport area
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -68,6 +76,13 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-F1', () => {
       const visible = this.walkSystem.toggleDebug();
       console.log(`Walk debug overlay: ${visible ? 'ON' : 'OFF'}`);
+    });
+
+    // ESC key opens pause menu (launches PauseScene as overlay)
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.isTransitioning || this.isDialogueActive) return;
+      this.scene.pause('GameScene');
+      this.scene.launch('PauseScene');
     });
 
     // Initialize UI systems in order (bottom to top visually, but create order doesn't matter)
@@ -83,14 +98,29 @@ export class GameScene extends Phaser.Scene {
     // Initialize dialogue system (must be after other UI systems so it renders on top)
     this.dialogueSystem = new DialogueSystem(this);
 
-    // Initialize game state manager (singleton, tracks room/position/inventory/flags/quests)
-    this.gameState = new GameState(this);
+    // Initialize or re-bind game state manager (singleton, tracks room/position/inventory/flags/quests)
+    const existingGameState = GameState.getInstance();
+    if (existingGameState) {
+      // Scene restart (e.g., after loading a save) — re-bind to new scene
+      existingGameState.setScene(this);
+      this.gameState = existingGameState;
+
+      // Restore inventory into InventorySystem from GameState
+      const savedInventory = this.gameState.getInventory();
+      for (const item of savedInventory) {
+        if (!this.inventorySystem.hasItem(item.id)) {
+          this.inventorySystem.addItem(item);
+        }
+      }
+    } else {
+      this.gameState = new GameState(this);
+    }
 
     // Initialize save system (must be after GameState so it can listen for room changes)
     this.saveSystem = new SaveSystem(this);
 
-    // Track initial room and player position in GameState
-    if (this.currentRoom) {
+    // Track initial room and player position in GameState (only if not already restored)
+    if (!restoredRoomId && this.currentRoom) {
       this.gameState.setCurrentRoomId(this.currentRoom.id);
     }
     this.gameState.setPlayerPosition(this.player.getX(), this.player.getY());

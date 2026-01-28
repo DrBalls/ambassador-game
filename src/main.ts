@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
+import { PauseScene } from './scenes/PauseScene';
 import {
   calculateIntegerScale,
   getViewportSize,
@@ -48,7 +49,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, GameScene],
+  scene: [BootScene, MenuScene, GameScene, PauseScene],
 };
 
 // Create and export the game instance
