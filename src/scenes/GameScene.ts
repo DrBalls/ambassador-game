@@ -13,34 +13,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Set background color for now
-    this.cameras.main.setBackgroundColor('#1e3a5f');
+    // Display placeholder background (320x200)
+    this.add.image(0, 0, 'bg-placeholder').setOrigin(0, 0);
 
-    // Placeholder text to show the scene is working
+    // Display placeholder character sprite in center
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'character');
+
+    // Display UI button in corner as test
+    this.add.image(16, 16, 'ui-button');
+
+    // Label text to show assets loaded
     const text = this.add.text(
       GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      'Game Scene',
+      GAME_HEIGHT - 20,
+      'Assets Loaded',
       {
-        fontSize: '12px',
+        fontSize: '8px',
         color: '#ffffff',
         fontFamily: 'Arial',
       }
     );
     text.setOrigin(0.5, 0.5);
-
-    // Subtitle with instructions
-    const subtitle = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 16,
-      'Adventure awaits...',
-      {
-        fontSize: '8px',
-        color: '#aaaaaa',
-        fontFamily: 'Arial',
-      }
-    );
-    subtitle.setOrigin(0.5, 0.5);
   }
 
   update(_time: number, _delta: number): void {

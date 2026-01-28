@@ -13,7 +13,14 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Asset preloading will be added here in future stories
+    // Load background images
+    this.load.image('bg-placeholder', 'assets/backgrounds/placeholder.png');
+
+    // Load character sprites
+    this.load.image('character', 'assets/sprites/character.png');
+
+    // Load UI elements
+    this.load.image('ui-button', 'assets/ui/button.png');
   }
 
   create(): void {
