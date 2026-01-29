@@ -69,6 +69,18 @@ export class GameState {
   }
 
   /**
+   * Reset all game state to initial values.
+   * Used when starting a new game from the title screen.
+   */
+  reset(): void {
+    this.currentRoomId = null;
+    this.playerPosition = { x: 0, y: 0 };
+    this.inventory = [];
+    this.flags.clear();
+    this.quests.clear();
+  }
+
+  /**
    * Update the scene reference (e.g., when restarting scenes).
    */
   setScene(scene: Phaser.Scene): void {

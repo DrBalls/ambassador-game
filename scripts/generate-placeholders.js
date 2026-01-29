@@ -1206,4 +1206,197 @@ const forbiddenZoneBuffer = createPNG(320, 200, (x, y) => {
 });
 savePNG('public/assets/backgrounds/forbidden-zone.png', forbiddenZoneBuffer);
 
+// 18. Title Screen background: 320x200 — Antarctic vista with aurora borealis, starry sky, ice landscape
+// The title screen backdrop featuring a sweeping Antarctic panorama with a vibrant aurora in the sky.
+const TITLE_COLORS = {
+  skyTop: { r: 5, g: 3, b: 18 },            // Near-black night sky
+  skyMid: { r: 12, g: 10, b: 35 },          // Deep navy
+  skyLow: { r: 25, g: 20, b: 55 },          // Dark purple
+  skyHorizon: { r: 45, g: 30, b: 70 },      // Warm purple horizon
+  auroraGreen: { r: 50, g: 220, b: 100 },   // Bright aurora green
+  auroraBlue: { r: 40, g: 120, b: 200 },    // Aurora blue accent
+  auroraCyan: { r: 60, g: 200, b: 180 },    // Aurora cyan
+  starWhite: { r: 255, g: 255, b: 245 },    // Warm white star
+  starBlue: { r: 190, g: 210, b: 255 },     // Cool blue star
+  iceBase: { r: 160, g: 180, b: 210 },      // Ice surface
+  iceShadow: { r: 80, g: 95, b: 130 },      // Ice shadow
+  iceHighlight: { r: 200, g: 215, b: 240 }, // Ice highlight
+  iceEdge: { r: 120, g: 140, b: 175 },      // Ice cliff edge
+  oceanDark: { r: 15, g: 25, b: 50 },       // Dark ocean
+};
+
+// Pre-computed title screen stars (seeded)
+const titleStars = [];
+seed = 77; // reset seeded random
+for (let i = 0; i < 60; i++) {
+  titleStars.push({
+    x: Math.floor(seededRandom() * 318) + 1,
+    y: Math.floor(seededRandom() * 85) + 2,
+    size: seededRandom() > 0.8 ? 2 : 1,
+    brightness: 0.5 + seededRandom() * 0.5,
+  });
+}
+
+const titleScreenBuffer = createPNG(320, 200, (x, y) => {
+  // Sky area (top ~100px)
+  if (y < 100) {
+    // Base sky gradient
+    const t = y / 100;
+    let skyR, skyG, skyB;
+    if (t < 0.3) {
+      const lt = t / 0.3;
+      skyR = Math.floor(TITLE_COLORS.skyTop.r + (TITLE_COLORS.skyMid.r - TITLE_COLORS.skyTop.r) * lt);
+      skyG = Math.floor(TITLE_COLORS.skyTop.g + (TITLE_COLORS.skyMid.g - TITLE_COLORS.skyTop.g) * lt);
+      skyB = Math.floor(TITLE_COLORS.skyTop.b + (TITLE_COLORS.skyMid.b - TITLE_COLORS.skyTop.b) * lt);
+    } else if (t < 0.7) {
+      const lt = (t - 0.3) / 0.4;
+      skyR = Math.floor(TITLE_COLORS.skyMid.r + (TITLE_COLORS.skyLow.r - TITLE_COLORS.skyMid.r) * lt);
+      skyG = Math.floor(TITLE_COLORS.skyMid.g + (TITLE_COLORS.skyLow.g - TITLE_COLORS.skyMid.g) * lt);
+      skyB = Math.floor(TITLE_COLORS.skyMid.b + (TITLE_COLORS.skyLow.b - TITLE_COLORS.skyMid.b) * lt);
+    } else {
+      const lt = (t - 0.7) / 0.3;
+      skyR = Math.floor(TITLE_COLORS.skyLow.r + (TITLE_COLORS.skyHorizon.r - TITLE_COLORS.skyLow.r) * lt);
+      skyG = Math.floor(TITLE_COLORS.skyLow.g + (TITLE_COLORS.skyHorizon.g - TITLE_COLORS.skyLow.g) * lt);
+      skyB = Math.floor(TITLE_COLORS.skyLow.b + (TITLE_COLORS.skyHorizon.b - TITLE_COLORS.skyLow.b) * lt);
+    }
+
+    // Aurora borealis (sinusoidal curtain bands between y 15-75)
+    if (y >= 15 && y < 75) {
+      // Multiple overlapping aurora bands
+      const band1 = Math.sin(x * 0.025 + 0.5) * 15 + 35;
+      const band2 = Math.sin(x * 0.018 - 1.2) * 18 + 45;
+      const band3 = Math.sin(x * 0.03 + 2.0) * 12 + 30;
+
+      const dist1 = Math.abs(y - band1);
+      const dist2 = Math.abs(y - band2);
+      const dist3 = Math.abs(y - band3);
+
+      // Aurora intensity based on distance to band center
+      const intensity1 = Math.max(0, 1 - dist1 / 12);
+      const intensity2 = Math.max(0, 1 - dist2 / 10);
+      const intensity3 = Math.max(0, 1 - dist3 / 8);
+
+      // Horizontal variation (brighter in center-left)
+      const horizFade = Math.max(0, 1 - Math.abs(x - 140) / 180);
+
+      const auroraStrength =
+        intensity1 * 0.4 * horizFade +
+        intensity2 * 0.3 * horizFade +
+        intensity3 * 0.25 * horizFade;
+
+      if (auroraStrength > 0.02) {
+        // Mix green and blue-cyan aurora colors
+        const greenWeight = intensity1 * 0.6 + intensity3 * 0.4;
+        const blueWeight = intensity2 * 0.7;
+        const totalWeight = greenWeight + blueWeight;
+        const gn = totalWeight > 0 ? greenWeight / totalWeight : 0.5;
+
+        const auroraR = Math.floor(TITLE_COLORS.auroraGreen.r * gn + TITLE_COLORS.auroraCyan.r * (1 - gn));
+        const auroraG = Math.floor(TITLE_COLORS.auroraGreen.g * gn + TITLE_COLORS.auroraCyan.g * (1 - gn));
+        const auroraB = Math.floor(TITLE_COLORS.auroraBlue.b * (1 - gn) + TITLE_COLORS.auroraCyan.b * gn);
+
+        const strength = Math.min(auroraStrength, 0.6);
+        skyR = Math.floor(skyR + (auroraR - skyR) * strength);
+        skyG = Math.floor(skyG + (auroraG - skyG) * strength);
+        skyB = Math.floor(skyB + (auroraB - skyB) * strength);
+      }
+    }
+
+    // Stars
+    for (const star of titleStars) {
+      const sdx = x - star.x;
+      const sdy = y - star.y;
+      if (Math.abs(sdx) <= star.size && Math.abs(sdy) <= star.size &&
+          (Math.abs(sdx) + Math.abs(sdy) <= star.size + 1)) {
+        const br = star.brightness;
+        if (star.size > 1) {
+          return {
+            r: Math.floor(TITLE_COLORS.starWhite.r * br),
+            g: Math.floor(TITLE_COLORS.starWhite.g * br),
+            b: Math.floor(TITLE_COLORS.starWhite.b * br),
+            a: 255,
+          };
+        }
+        return {
+          r: Math.floor(TITLE_COLORS.starBlue.r * br),
+          g: Math.floor(TITLE_COLORS.starBlue.g * br),
+          b: Math.floor(TITLE_COLORS.starBlue.b * br),
+          a: 255,
+        };
+      }
+    }
+
+    return { r: Math.max(0, skyR), g: Math.max(0, skyG), b: Math.max(0, skyB), a: 255 };
+  }
+
+  // Horizon / ice cliff edge (y 100-115)
+  if (y < 115) {
+    const edgeT = (y - 100) / 15;
+    // Jagged ice cliff silhouette
+    const jagged = Math.sin(x * 0.08) * 4 + Math.sin(x * 0.2) * 2 + Math.cos(x * 0.05) * 3;
+    if (y < 102 + jagged) {
+      // Sky color at horizon
+      return { ...TITLE_COLORS.skyHorizon, a: 255 };
+    }
+    // Ice cliff face
+    const r = Math.floor(TITLE_COLORS.iceEdge.r + (TITLE_COLORS.iceBase.r - TITLE_COLORS.iceEdge.r) * edgeT);
+    const g = Math.floor(TITLE_COLORS.iceEdge.g + (TITLE_COLORS.iceBase.g - TITLE_COLORS.iceEdge.g) * edgeT);
+    const b = Math.floor(TITLE_COLORS.iceEdge.b + (TITLE_COLORS.iceBase.b - TITLE_COLORS.iceEdge.b) * edgeT);
+    return { r, g, b, a: 255 };
+  }
+
+  // Ice landscape (y 115-170) — sweeping ice field with ridges
+  if (y < 170) {
+    const groundT = (y - 115) / 55;
+    // Subtle ice ridges
+    const ridge1 = Math.sin(x * 0.04 + 1.0) * 3;
+    const ridge2 = Math.sin(x * 0.08 - 0.5) * 2;
+    const ridgeEffect = (ridge1 + ridge2) / 5;
+
+    const noiseVal = Math.sin(x * 0.12 + y * 0.08) * 0.3 + Math.sin(x * 0.05 + y * 0.15) * 0.2;
+
+    const baseR = Math.floor(TITLE_COLORS.iceBase.r - groundT * 30 + ridgeEffect * 10 + noiseVal * 10);
+    const baseG = Math.floor(TITLE_COLORS.iceBase.g - groundT * 25 + ridgeEffect * 12 + noiseVal * 10);
+    const baseB = Math.floor(TITLE_COLORS.iceBase.b - groundT * 15 + ridgeEffect * 15 + noiseVal * 8);
+
+    // Aurora reflection on ice (subtle green tint near horizon)
+    const reflectionT = Math.max(0, 1 - groundT * 2.5);
+    const reflR = Math.floor(baseR + TITLE_COLORS.auroraGreen.r * reflectionT * 0.04);
+    const reflG = Math.floor(baseG + TITLE_COLORS.auroraGreen.g * reflectionT * 0.06);
+    const reflB = Math.floor(baseB + TITLE_COLORS.auroraGreen.b * reflectionT * 0.03);
+
+    return {
+      r: Math.max(0, Math.min(255, reflR)),
+      g: Math.max(0, Math.min(255, reflG)),
+      b: Math.max(0, Math.min(255, reflB)),
+      a: 255,
+    };
+  }
+
+  // Ocean strip at bottom (y 170-200) — dark, calm water with ice reflection
+  const waterT = (y - 170) / 30;
+  const waveOffset = Math.sin(x * 0.06 + y * 0.4) * 1.5;
+  const shimmer = Math.sin(x * 0.15 + y * 0.2) * 0.3;
+
+  let waterR = Math.floor(TITLE_COLORS.oceanDark.r + shimmer * 8 + waveOffset);
+  let waterG = Math.floor(TITLE_COLORS.oceanDark.g + shimmer * 12 + waveOffset);
+  let waterB = Math.floor(TITLE_COLORS.oceanDark.b + shimmer * 15 + waveOffset * 2);
+
+  // Subtle ice-edge reflection in water near top
+  if (waterT < 0.3) {
+    const reflT = 1 - waterT / 0.3;
+    waterR = Math.floor(waterR + (TITLE_COLORS.iceShadow.r - waterR) * reflT * 0.3);
+    waterG = Math.floor(waterG + (TITLE_COLORS.iceShadow.g - waterG) * reflT * 0.3);
+    waterB = Math.floor(waterB + (TITLE_COLORS.iceShadow.b - waterB) * reflT * 0.3);
+  }
+
+  return {
+    r: Math.max(0, Math.min(255, waterR)),
+    g: Math.max(0, Math.min(255, waterG)),
+    b: Math.max(0, Math.min(255, waterB)),
+    a: 255,
+  };
+});
+savePNG('public/assets/backgrounds/title-screen.png', titleScreenBuffer);
+
 console.log('\nAll placeholder assets generated successfully!');

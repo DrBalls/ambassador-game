@@ -22,6 +22,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('bg-colony-gathering', 'assets/backgrounds/colony-gathering.png');
     this.load.image('bg-shore-duty', 'assets/backgrounds/shore-duty.png');
     this.load.image('bg-forbidden-zone', 'assets/backgrounds/forbidden-zone.png');
+    this.load.image('bg-title-screen', 'assets/backgrounds/title-screen.png');
 
     // Load character sprites
     this.load.image('character', 'assets/sprites/character.png');

@@ -34,6 +34,8 @@ Started: 2026-01-28
 - Exit zones: Created separately from hotspots in GameScene; emit hotspot:hover/leave events for sentence line
 - Room transitions: transitionToRoom() uses camera.fadeOut(500) → loadRoom → camera.fadeIn(500) with isTransitioning guard
 - Camera fade events: 'camerafadeoutcomplete' and 'camerafadeincomplete' for chaining transition steps
+- Save data access from MenuScene: Check localStorage directly with key prefix 'ambassador-save-slot-' and SAVE_SLOT_COUNT (don't instantiate SaveSystem outside GameScene)
+- GameState.reset(): Clears all state (room, position, inventory, flags, quests) for clean new-game starts
 - Character entities: src/entities/Character.ts base class, src/entities/Player.ts extends it
 - Character origin: (0.5, 1) bottom-center — Y position represents feet on ground
 - Depth sorting: sprite.setDepth(y) for Y-based ordering; update on every setPosition()
@@ -925,4 +927,32 @@ Started: 2026-01-28
   - The probe pattern puzzle demonstrates the full PatternDisplay → PatternInput pipeline integration in a real gameplay context
   - Custom action handlers (like useProbe) support multi-state interactions — check flags in order from most-progressed to least-progressed state
   - Forbidden Zone has no NPCs in characters[] — Riptide/Frost appearances are handled narratively through dialogue text rather than spawning NPC entities
+---
+
+## 2026-01-28 - US-031
+- What was implemented: Full title screen replacing the placeholder MenuScene
+  - Antarctic vista background with aurora borealis, stars, ice cliffs, and dark ocean (procedurally generated in scripts/generate-placeholders.js)
+  - Title text "The Smallest Ambassador" with shadow, gentle float animation
+  - Subtitle "A Sierra-Style Adventure"
+  - Menu buttons: New Game, Continue (conditional on save data), Options, Credits
+  - Animated aurora overlays (shimmer + drift via Phaser tweens)
+  - Twinkling star sprites with randomized alpha tweens
+  - Options sub-view (placeholder) with Back button
+  - Credits sub-view with game info and Back button
+  - New Game resets GameState and fades to GameScene
+  - Continue finds the most recent save slot and loads its snapshot
+  - ESC key navigates back from sub-views
+  - Added GameState.reset() method for clean new-game starts
+- Files changed:
+  - scripts/generate-placeholders.js (title screen background generation)
+  - src/scenes/BootScene.ts (preload bg-title-screen)
+  - src/scenes/MenuScene.ts (full rewrite with title screen UI)
+  - src/systems/GameState.ts (added reset() method)
+  - public/assets/backgrounds/title-screen.png (generated asset)
+  - prd.json (US-031 passes: true)
+- **Learnings for future iterations:**
+  - MenuScene cannot use SaveSystem directly (it requires GameScene context) — check localStorage directly using the same key prefix 'ambassador-save-slot-' and SAVE_SLOT_COUNT
+  - For Continue functionality, parse save slot JSON to find the latest timestamp, then load the snapshot into GameState before transitioning to GameScene
+  - Aurora animation uses semi-transparent rectangles with dual tweens (alpha shimmer + position drift) layered on top of a static procedural background — a lightweight approach for atmospheric effects
+  - Text shadow config `{ offsetX: 1, offsetY: 1, color: '#000000', blur: 0, fill: true }` ensures readability against busy backgrounds at VGA resolution
 ---
