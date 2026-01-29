@@ -567,7 +567,7 @@
         "Verify in browser: all interactions have appropriate sounds"
       ],
       "priority": 32,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

@@ -15,6 +15,7 @@ import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
 import { NPCDefinition, getNPCDefinition } from '../data/npcs';
 import { PatternDisplay, PatternInput } from '../systems/PatternPuzzle';
+import { SoundSystem } from '../systems/SoundSystem';
 
 /** Height of the gameplay viewport area (above UI panels) */
 const VIEWPORT_HEIGHT = 120;
@@ -43,6 +44,8 @@ export class GameScene extends Phaser.Scene {
   private player!: Player;
   private walkablePolygon: Phaser.Geom.Polygon | null = null;
   private walkSystem!: WalkSystem;
+  private soundSystem!: SoundSystem;
+  private footstepTimer = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -86,6 +89,12 @@ export class GameScene extends Phaser.Scene {
       this.scene.launch('PauseScene');
     });
 
+    // M key toggles sound mute
+    this.input.keyboard?.on('keydown-M', () => {
+      const muted = this.soundSystem.toggleMute();
+      this.showFeedback(muted ? 'Sound: OFF' : 'Sound: ON');
+    });
+
     // Initialize UI systems in order (bottom to top visually, but create order doesn't matter)
     // UI Layout:
     // - Viewport: 0-120 (120px)
@@ -120,6 +129,9 @@ export class GameScene extends Phaser.Scene {
     // Initialize save system (must be after GameState so it can listen for room changes)
     this.saveSystem = new SaveSystem(this);
 
+    // Initialize sound system (procedural 8-bit sound effects)
+    this.soundSystem = new SoundSystem(this);
+
     // Track initial room and player position in GameState (only if not already restored)
     if (!restoredRoomId && this.currentRoom) {
       this.gameState.setCurrentRoomId(this.currentRoom.id);
@@ -134,6 +146,7 @@ export class GameScene extends Phaser.Scene {
         this.inventorySystem.addItem(item);
       }
       this.showFeedback(`Received ${item.name}!`);
+      this.soundSystem.play('itemPickup');
     });
     this.events.on('gamestate:takeItem', (itemId: string) => {
       if (this.inventorySystem.hasItem(itemId)) {
@@ -156,6 +169,11 @@ export class GameScene extends Phaser.Scene {
       this.isDialogueActive = false;
     });
 
+    // Dialogue typewriter blip sound
+    this.events.on('dialogue:blip', () => {
+      this.soundSystem.play('dialogueBlip');
+    });
+
     // Listen for hotspot clicks — dispatch verb action
     this.events.on('hotspot:click', (hotspotData: HotspotData) => {
       this.handleHotspotClick(hotspotData);
@@ -172,9 +190,10 @@ export class GameScene extends Phaser.Scene {
       this.handleHotspotAction(action, data);
     });
 
-    // Listen for verb selection events (useful for debugging)
+    // Listen for verb selection events — play UI click sound
     this.events.on('verb:selected', (verb: string) => {
       console.log(`Verb selected: ${verb}`);
+      this.soundSystem.play('uiClick');
     });
 
     // Listen for inventory events (useful for debugging and testing)
@@ -207,6 +226,7 @@ export class GameScene extends Phaser.Scene {
       'combination:success',
       (resultItem: ItemDefinition) => {
         this.showFeedback(`Created ${resultItem.name}!`);
+        this.soundSystem.play('puzzleSuccess');
       }
     );
 
@@ -214,8 +234,17 @@ export class GameScene extends Phaser.Scene {
       'combination:fail',
       (_source: InventoryItem, _target: InventoryItem) => {
         this.showFeedback("That doesn't work.");
+        this.soundSystem.play('puzzleFail');
       }
     );
+
+    // Pattern puzzle sound effects
+    this.events.on('pattern:inputSuccess', () => {
+      this.soundSystem.play('puzzleSuccess');
+    });
+    this.events.on('pattern:inputFail', () => {
+      this.soundSystem.play('puzzleFail');
+    });
 
     // Expose systems globally for console testing
     // Usage: window.gameState.getSnapshot(), window.gameState.setFlag('test', true), etc.
@@ -223,6 +252,7 @@ export class GameScene extends Phaser.Scene {
     (window as unknown as { gameState: GameState }).gameState = this.gameState;
     (window as unknown as { testInventory: InventorySystem }).testInventory = this.inventorySystem;
     (window as unknown as { saveSystem: SaveSystem }).saveSystem = this.saveSystem;
+    (window as unknown as { soundSystem: SoundSystem }).soundSystem = this.soundSystem;
     (window as unknown as { gameScene: GameScene }).gameScene = this;
     // Test helper: window.testPattern([0,2,4]) creates and plays a PatternDisplay
     (window as unknown as { testPattern: (indices: number[]) => PatternDisplay }).testPattern = (indices: number[]) => {
@@ -518,6 +548,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Get the sound system for external access
+   */
+  getSoundSystem(): SoundSystem {
+    return this.soundSystem;
+  }
+
+  /**
    * Get the player character
    */
   getPlayer(): Player {
@@ -751,6 +788,7 @@ export class GameScene extends Phaser.Scene {
 
     this.isTransitioning = true;
     this.player.stopWalking();
+    this.soundSystem.play('doorExit');
 
     // Fade out (500ms)
     this.cameras.main.fadeOut(500, 0, 0, 0);
@@ -880,6 +918,17 @@ export class GameScene extends Phaser.Scene {
     // Sync player position to GameState when walking
     if (wasWalking || this.player.getIsWalking()) {
       this.gameState.setPlayerPosition(this.player.getX(), this.player.getY());
+    }
+
+    // Play footstep sounds while walking (every 250ms)
+    if (this.player.getIsWalking()) {
+      this.footstepTimer += delta;
+      if (this.footstepTimer >= 250) {
+        this.footstepTimer = 0;
+        this.soundSystem.play('footstep');
+      }
+    } else {
+      this.footstepTimer = 0;
     }
   }
 }

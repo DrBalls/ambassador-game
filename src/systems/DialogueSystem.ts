@@ -254,6 +254,12 @@ export class DialogueSystem {
         this.displayedChars++;
         this.dialogueText.setText(this.fullText.substring(0, this.displayedChars));
 
+        // Emit blip sound on every 3rd character (not spaces)
+        const char = this.fullText[this.displayedChars - 1];
+        if (char && char !== ' ' && this.displayedChars % 3 === 1) {
+          this.scene.events.emit('dialogue:blip');
+        }
+
         if (this.displayedChars >= this.fullText.length) {
           this.completeTypewriter();
         }

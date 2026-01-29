@@ -274,19 +274,125 @@ export class MenuScene extends Phaser.Scene {
     title.setDepth(10);
     this.subViewItems.push(title);
 
-    // Placeholder options text
-    const optText = this.add.text(GAME_WIDTH / 2, 95, 'Sound and music options\ncoming soon!', {
+    // SFX Volume controls
+    this.createVolumeControl(90, 'SFX Volume', 'ambassador-sfx-volume', 'ambassador-sfx-muted');
+
+    // Hint about M key
+    const hint = this.add.text(GAME_WIDTH / 2, 130, 'Press M in-game to toggle mute', {
+      fontSize: '6px',
+      fontFamily: 'Arial',
+      color: '#666688',
+      shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 0, fill: true },
+    });
+    hint.setOrigin(0.5, 0.5);
+    hint.setDepth(10);
+    this.subViewItems.push(hint);
+
+    this.addBackButton();
+  }
+
+  /**
+   * Create a volume control row with label, bar, and mute toggle.
+   * Reads/writes directly to localStorage (same keys as SoundSystem).
+   */
+  private createVolumeControl(y: number, label: string, volumeKey: string, muteKey: string): void {
+    const barWidth = 100;
+    const barHeight = 8;
+    const barX = GAME_WIDTH / 2 - barWidth / 2 + 30;
+
+    // Label
+    const labelText = this.add.text(barX - barWidth / 2 - 45, y, label, {
       fontSize: '7px',
       fontFamily: 'Arial',
       color: COLORS.CREDITS_TEXT,
-      align: 'center',
       shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 0, fill: true },
     });
-    optText.setOrigin(0.5, 0.5);
-    optText.setDepth(10);
-    this.subViewItems.push(optText);
+    labelText.setOrigin(0, 0.5);
+    labelText.setDepth(10);
+    this.subViewItems.push(labelText);
 
-    this.addBackButton();
+    // Read current values from localStorage
+    let currentVol = 0.7;
+    try {
+      const stored = localStorage.getItem(volumeKey);
+      if (stored !== null) currentVol = Math.max(0, Math.min(1, parseFloat(stored)));
+    } catch { /* ignore */ }
+
+    let isMuted = false;
+    try { isMuted = localStorage.getItem(muteKey) === '1'; } catch { /* ignore */ }
+
+    // Volume bar background
+    const barBg = this.add.rectangle(barX, y, barWidth, barHeight, 0x222244);
+    barBg.setStrokeStyle(1, 0x4a4a6e);
+    barBg.setDepth(10);
+    barBg.setInteractive({ useHandCursor: true });
+    this.subViewItems.push(barBg);
+
+    // Volume bar fill
+    const fillWidth = currentVol * barWidth;
+    const fillX = barX - barWidth / 2 + fillWidth / 2;
+    const barFill = this.add.rectangle(fillX, y, fillWidth, barHeight - 2, isMuted ? 0x444466 : 0x4488cc);
+    barFill.setDepth(11);
+    this.subViewItems.push(barFill);
+
+    // Volume percentage text
+    const volText = this.add.text(barX + barWidth / 2 + 8, y, isMuted ? 'MUTE' : `${Math.round(currentVol * 100)}%`, {
+      fontSize: '6px',
+      fontFamily: 'Arial',
+      color: isMuted ? '#666688' : '#aaccff',
+      shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 0, fill: true },
+    });
+    volText.setOrigin(0, 0.5);
+    volText.setDepth(10);
+    this.subViewItems.push(volText);
+
+    // Click on bar to set volume
+    barBg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      const localX = pointer.x - (barX - barWidth / 2);
+      const newVol = Math.max(0, Math.min(1, localX / barWidth));
+      try {
+        localStorage.setItem(volumeKey, String(newVol));
+        // Unmute when adjusting volume
+        localStorage.setItem(muteKey, '0');
+      } catch { /* ignore */ }
+
+      // Update visual
+      const newFillWidth = newVol * barWidth;
+      barFill.setSize(newFillWidth, barHeight - 2);
+      barFill.setPosition(barX - barWidth / 2 + newFillWidth / 2, y);
+      barFill.setFillStyle(0x4488cc);
+      volText.setText(`${Math.round(newVol * 100)}%`);
+      volText.setColor('#aaccff');
+    });
+
+    // Mute toggle button
+    const muteBtn = this.add.text(barX - barWidth / 2 - 10, y, isMuted ? '[X]' : '[O]', {
+      fontSize: '7px',
+      fontFamily: 'Arial',
+      color: isMuted ? '#666688' : '#88cc88',
+      shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 0, fill: true },
+    });
+    muteBtn.setOrigin(0.5, 0.5);
+    muteBtn.setDepth(10);
+    muteBtn.setInteractive({ useHandCursor: true });
+    this.subViewItems.push(muteBtn);
+
+    muteBtn.on('pointerdown', () => {
+      const nowMuted = localStorage.getItem(muteKey) === '1';
+      const newMuted = !nowMuted;
+      try { localStorage.setItem(muteKey, newMuted ? '1' : '0'); } catch { /* ignore */ }
+      muteBtn.setText(newMuted ? '[X]' : '[O]');
+      muteBtn.setColor(newMuted ? '#666688' : '#88cc88');
+      barFill.setFillStyle(newMuted ? 0x444466 : 0x4488cc);
+      volText.setText(newMuted ? 'MUTE' : `${Math.round(currentVol * 100)}%`);
+      volText.setColor(newMuted ? '#666688' : '#aaccff');
+    });
+
+    muteBtn.on('pointerover', () => { muteBtn.setColor('#ffffff'); });
+    muteBtn.on('pointerout', () => {
+      const m = localStorage.getItem(muteKey) === '1';
+      muteBtn.setColor(m ? '#666688' : '#88cc88');
+    });
   }
 
   // ─── Credits Sub-View ───────────────────────────────────────

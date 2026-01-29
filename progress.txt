@@ -16,6 +16,7 @@ Started: 2026-01-28
 - Asset loading: this.load.image() in preload(), this.add.image() in create()
 - UI systems: src/systems/ directory for reusable game systems (VerbSystem, etc.)
 - UI events: Use scene.events.emit('name', data) for decoupled UI communication
+- Sound system: SoundSystem uses Web Audio API (procedural 8-bit synthesis, no audio files). Volume/mute persist to localStorage keys 'ambassador-sfx-volume' and 'ambassador-sfx-muted'. MenuScene can read/write these directly without SoundSystem instance.
 - UI layout (320x200): Viewport (120px, Y=0-120), Inventory (40px, Y=120-160), Sentence (16px, Y=160-176), Verb bar (24px, Y=176-200)
 - Inventory events: 'inventory:selected', 'inventory:deselected', 'inventory:look', 'inventory:changed'
 - Item definitions: src/data/items.ts contains ITEM_DEFINITIONS, ITEM_COMBINATIONS, and lookup functions
@@ -955,4 +956,32 @@ Started: 2026-01-28
   - For Continue functionality, parse save slot JSON to find the latest timestamp, then load the snapshot into GameState before transitioning to GameScene
   - Aurora animation uses semi-transparent rectangles with dual tweens (alpha shimmer + position drift) layered on top of a static procedural background — a lightweight approach for atmospheric effects
   - Text shadow config `{ offsetX: 1, offsetY: 1, color: '#000000', blur: 0, fill: true }` ensures readability against busy backgrounds at VGA resolution
+---
+
+## 2026-01-28 - US-032
+- What was implemented: Procedural 8-bit sound effects system using Web Audio API
+  - Created SoundSystem (src/systems/SoundSystem.ts) — centralized audio with 7 sound effects: footstep, itemPickup, uiClick, dialogueBlip, doorExit, puzzleSuccess, puzzleFail
+  - All sounds are procedurally generated using oscillators (square/sawtooth waves), gain envelopes, and bandpass filters — no external audio files needed
+  - Footsteps play every 250ms while player walks, with alternating pitch (left/right foot effect)
+  - Dialogue blips emit every 3rd non-space character during typewriter effect via 'dialogue:blip' event
+  - UI click sounds on verb selection, item pickup chirps on giveItem, door whoosh on room transitions
+  - Puzzle success (ascending C-E-G arpeggio) and puzzle fail (descending sawtooth buzz) on pattern input and item combination events
+  - Volume control (0-100% slider) in MenuScene Options sub-view using clickable bar
+  - Mute toggle button [O]/[X] in Options and M key shortcut in-game
+  - Volume and mute state persist to localStorage ('ambassador-sfx-volume', 'ambassador-sfx-muted')
+  - Options view hint text: "Press M in-game to toggle mute"
+- Files changed:
+  - src/systems/SoundSystem.ts (new — procedural 8-bit sound effect system)
+  - src/scenes/GameScene.ts (SoundSystem init, sound event hooks for verb/inventory/dialogue/footstep/door/puzzle, M key mute, footstep timer)
+  - src/systems/DialogueSystem.ts (added 'dialogue:blip' event emission in typewriter callback)
+  - src/scenes/MenuScene.ts (replaced placeholder Options with volume slider, mute toggle, and hint text)
+  - prd.json (US-032 passes: true)
+  - progress.txt (this entry + codebase pattern)
+- **Learnings for future iterations:**
+  - Web Audio API `AudioContext` requires user gesture to resume from 'suspended' state — always check and resume before playing sounds
+  - Procedural sound generation avoids asset loading complexity but requires careful gain envelope management (always ramp to near-zero before oscillator stop to avoid audio clicks)
+  - `exponentialRampToValueAtTime` cannot ramp to 0 — use 0.001 as minimum target value
+  - MenuScene and SoundSystem share audio preferences via localStorage keys rather than passing instances — this keeps the systems decoupled since MenuScene exists before GameScene
+  - Throttle dialogue blips (every 3rd non-space char) to avoid overwhelming the audio context with rapid overlapping oscillators
+  - Alternating footstep pitch (180Hz / 160Hz) creates a more natural walking cadence than a single repeated sound
 ---
