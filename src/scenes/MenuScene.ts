@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH } from '../constants';
 import { SAVE_SLOT_COUNT } from '../systems/SaveSystem';
 import { GameState, GameStateSnapshot } from '../systems/GameState';
+import { MusicSystem } from '../systems/MusicSystem';
 
 /** localStorage key prefix (matches SaveSystem) */
 const SAVE_KEY_PREFIX = 'ambassador-save-slot-';
@@ -43,6 +44,7 @@ export class MenuScene extends Phaser.Scene {
   private auroraOverlays: Phaser.GameObjects.Rectangle[] = [];
   private starSprites: Phaser.GameObjects.Rectangle[] = [];
   private currentView: 'main' | 'options' | 'credits' = 'main';
+  private musicSystem: MusicSystem | null = null;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -50,6 +52,10 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     this.currentView = 'main';
+
+    // Start title screen music
+    this.musicSystem = new MusicSystem();
+    this.musicSystem.playTrack('title');
 
     // Background image
     this.background = this.add.image(0, 0, 'bg-title-screen').setOrigin(0, 0);
@@ -204,6 +210,8 @@ export class MenuScene extends Phaser.Scene {
     if (existing) {
       existing.reset();
     }
+    // Stop title music (GameScene will start its own)
+    this.musicSystem?.stopTrack();
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('GameScene');
@@ -248,6 +256,8 @@ export class MenuScene extends Phaser.Scene {
       // Skip corrupt data
     }
 
+    // Stop title music (GameScene will start its own)
+    this.musicSystem?.stopTrack();
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('GameScene');
@@ -277,8 +287,11 @@ export class MenuScene extends Phaser.Scene {
     // SFX Volume controls
     this.createVolumeControl(90, 'SFX Volume', 'ambassador-sfx-volume', 'ambassador-sfx-muted');
 
+    // Music Volume controls
+    this.createVolumeControl(108, 'Music Volume', 'ambassador-music-volume', 'ambassador-music-muted', this.musicSystem);
+
     // Hint about M key
-    const hint = this.add.text(GAME_WIDTH / 2, 130, 'Press M in-game to toggle mute', {
+    const hint = this.add.text(GAME_WIDTH / 2, 140, 'Press M in-game to toggle mute', {
       fontSize: '6px',
       fontFamily: 'Arial',
       color: '#666688',
@@ -295,7 +308,7 @@ export class MenuScene extends Phaser.Scene {
    * Create a volume control row with label, bar, and mute toggle.
    * Reads/writes directly to localStorage (same keys as SoundSystem).
    */
-  private createVolumeControl(y: number, label: string, volumeKey: string, muteKey: string): void {
+  private createVolumeControl(y: number, label: string, volumeKey: string, muteKey: string, liveMusicSystem?: MusicSystem | null): void {
     const barWidth = 100;
     const barHeight = 8;
     const barX = GAME_WIDTH / 2 - barWidth / 2 + 30;
@@ -350,6 +363,7 @@ export class MenuScene extends Phaser.Scene {
     barBg.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       const localX = pointer.x - (barX - barWidth / 2);
       const newVol = Math.max(0, Math.min(1, localX / barWidth));
+      currentVol = newVol;
       try {
         localStorage.setItem(volumeKey, String(newVol));
         // Unmute when adjusting volume
@@ -363,6 +377,15 @@ export class MenuScene extends Phaser.Scene {
       barFill.setFillStyle(0x4488cc);
       volText.setText(`${Math.round(newVol * 100)}%`);
       volText.setColor('#aaccff');
+      isMuted = false;
+      muteBtn.setText('[O]');
+      muteBtn.setColor('#88cc88');
+
+      // Apply live update to music system if provided
+      if (liveMusicSystem) {
+        liveMusicSystem.setVolume(newVol);
+        liveMusicSystem.setMuted(false);
+      }
     });
 
     // Mute toggle button
@@ -380,12 +403,18 @@ export class MenuScene extends Phaser.Scene {
     muteBtn.on('pointerdown', () => {
       const nowMuted = localStorage.getItem(muteKey) === '1';
       const newMuted = !nowMuted;
+      isMuted = newMuted;
       try { localStorage.setItem(muteKey, newMuted ? '1' : '0'); } catch { /* ignore */ }
       muteBtn.setText(newMuted ? '[X]' : '[O]');
       muteBtn.setColor(newMuted ? '#666688' : '#88cc88');
       barFill.setFillStyle(newMuted ? 0x444466 : 0x4488cc);
       volText.setText(newMuted ? 'MUTE' : `${Math.round(currentVol * 100)}%`);
       volText.setColor(newMuted ? '#666688' : '#aaccff');
+
+      // Apply live update to music system if provided
+      if (liveMusicSystem) {
+        liveMusicSystem.setMuted(newMuted);
+      }
     });
 
     muteBtn.on('pointerover', () => { muteBtn.setColor('#ffffff'); });

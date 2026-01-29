@@ -16,6 +16,7 @@ import { NPC } from '../entities/NPC';
 import { NPCDefinition, getNPCDefinition } from '../data/npcs';
 import { PatternDisplay, PatternInput } from '../systems/PatternPuzzle';
 import { SoundSystem } from '../systems/SoundSystem';
+import { MusicSystem, getRoomMusic } from '../systems/MusicSystem';
 
 /** Height of the gameplay viewport area (above UI panels) */
 const VIEWPORT_HEIGHT = 120;
@@ -45,6 +46,7 @@ export class GameScene extends Phaser.Scene {
   private walkablePolygon: Phaser.Geom.Polygon | null = null;
   private walkSystem!: WalkSystem;
   private soundSystem!: SoundSystem;
+  private musicSystem!: MusicSystem;
   private footstepTimer = 0;
 
   constructor() {
@@ -89,9 +91,10 @@ export class GameScene extends Phaser.Scene {
       this.scene.launch('PauseScene');
     });
 
-    // M key toggles sound mute
+    // M key toggles sound mute (both SFX and music)
     this.input.keyboard?.on('keydown-M', () => {
       const muted = this.soundSystem.toggleMute();
+      this.musicSystem.setMuted(muted);
       this.showFeedback(muted ? 'Sound: OFF' : 'Sound: ON');
     });
 
@@ -131,6 +134,14 @@ export class GameScene extends Phaser.Scene {
 
     // Initialize sound system (procedural 8-bit sound effects)
     this.soundSystem = new SoundSystem(this);
+
+    // Initialize music system (procedural retro-style background music)
+    this.musicSystem = new MusicSystem();
+    // Start music for the current room
+    const roomMusic = getRoomMusic(startRoomId);
+    if (roomMusic) {
+      this.musicSystem.playTrack(roomMusic);
+    }
 
     // Track initial room and player position in GameState (only if not already restored)
     if (!restoredRoomId && this.currentRoom) {
@@ -253,6 +264,7 @@ export class GameScene extends Phaser.Scene {
     (window as unknown as { testInventory: InventorySystem }).testInventory = this.inventorySystem;
     (window as unknown as { saveSystem: SaveSystem }).saveSystem = this.saveSystem;
     (window as unknown as { soundSystem: SoundSystem }).soundSystem = this.soundSystem;
+    (window as unknown as { musicSystem: MusicSystem }).musicSystem = this.musicSystem;
     (window as unknown as { gameScene: GameScene }).gameScene = this;
     // Test helper: window.testPattern([0,2,4]) creates and plays a PatternDisplay
     (window as unknown as { testPattern: (indices: number[]) => PatternDisplay }).testPattern = (indices: number[]) => {
@@ -555,6 +567,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Get the music system for external access
+   */
+  getMusicSystem(): MusicSystem {
+    return this.musicSystem;
+  }
+
+  /**
    * Get the player character
    */
   getPlayer(): Player {
@@ -789,6 +808,12 @@ export class GameScene extends Phaser.Scene {
     this.isTransitioning = true;
     this.player.stopWalking();
     this.soundSystem.play('doorExit');
+
+    // Cross-fade music to the new room's track
+    const newMusic = getRoomMusic(targetRoomId);
+    if (newMusic) {
+      this.musicSystem.crossFadeTo(newMusic);
+    }
 
     // Fade out (500ms)
     this.cameras.main.fadeOut(500, 0, 0, 0);

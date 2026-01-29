@@ -17,6 +17,7 @@ Started: 2026-01-28
 - UI systems: src/systems/ directory for reusable game systems (VerbSystem, etc.)
 - UI events: Use scene.events.emit('name', data) for decoupled UI communication
 - Sound system: SoundSystem uses Web Audio API (procedural 8-bit synthesis, no audio files). Volume/mute persist to localStorage keys 'ambassador-sfx-volume' and 'ambassador-sfx-muted'. MenuScene can read/write these directly without SoundSystem instance.
+- Music system: MusicSystem (src/systems/MusicSystem.ts) uses Web Audio API with procedural tracks (no audio files). Volume/mute persist to localStorage keys 'ambassador-music-volume' and 'ambassador-music-muted'. Tracks defined declaratively as layers of NoteEvents. ROOM_MUSIC_MAP maps room IDs to track names. Cross-fade via crossFadeTo(track). MenuScene creates its own MusicSystem for title music; GameScene creates its own for gameplay music.
 - UI layout (320x200): Viewport (120px, Y=0-120), Inventory (40px, Y=120-160), Sentence (16px, Y=160-176), Verb bar (24px, Y=176-200)
 - Inventory events: 'inventory:selected', 'inventory:deselected', 'inventory:look', 'inventory:changed'
 - Item definitions: src/data/items.ts contains ITEM_DEFINITIONS, ITEM_COMBINATIONS, and lookup functions
@@ -984,4 +985,33 @@ Started: 2026-01-28
   - MenuScene and SoundSystem share audio preferences via localStorage keys rather than passing instances — this keeps the systems decoupled since MenuScene exists before GameScene
   - Throttle dialogue blips (every 3rd non-space char) to avoid overwhelming the audio context with rapid overlapping oscillators
   - Alternating footstep pitch (180Hz / 160Hz) creates a more natural walking cadence than a single repeated sound
+---
+
+## 2026-01-28 - US-033: Add Background Music
+- What was implemented: Procedural retro-style background music system using Web Audio API
+  - Created MusicSystem (src/systems/MusicSystem.ts) — centralized music with 6 tracks: title, colony, shore, forbidden, tense, counting-spot
+  - All music is procedurally generated using oscillators (sine/triangle/square/sawtooth), gain envelopes, and lowpass filters — no external audio files needed
+  - Each track defined declaratively as layers of NoteEvents (bass, melody, pad, arpeggio, accent layers)
+  - Seamless looping via "schedule ahead" pattern — interval timer schedules notes 2 seconds into the future
+  - Cross-fade between tracks on room change via crossFadeTo() — old track fades out, new track fades in over 1 second
+  - ROOM_MUSIC_MAP maps room IDs to track names (counting-spot→counting-spot, colony-gathering→colony, shore-duty→shore, forbidden-zone→forbidden)
+  - Title screen music plays from MenuScene (separate MusicSystem instance)
+  - Music stops when leaving MenuScene (startNewGame/continueGame)
+  - M key toggles both SFX and music mute simultaneously
+  - Volume control (0-100% slider) in MenuScene Options sub-view for music (separate from SFX)
+  - Volume and mute state persist to localStorage ('ambassador-music-volume', 'ambassador-music-muted')
+  - Live music preview: adjusting volume/mute in Options immediately affects playing title music
+- Files changed:
+  - src/systems/MusicSystem.ts (new — procedural background music system with 6 tracks)
+  - src/scenes/GameScene.ts (MusicSystem init, room-change crossFadeTo, M key mute toggle, getMusicSystem accessor, window.musicSystem exposure)
+  - src/scenes/MenuScene.ts (MusicSystem for title music, music volume control in Options, stopTrack on scene exit)
+  - prd.json (US-033 passes: true)
+  - progress.txt (this entry + codebase pattern)
+- **Learnings for future iterations:**
+  - The "schedule ahead" pattern (setInterval every 500ms scheduling 2s ahead) avoids timing gaps between loop iterations that a single setTimeout approach would have
+  - Each MusicSystem instance owns its own AudioContext — MenuScene and GameScene create separate instances to avoid lifecycle coupling
+  - Cross-fade requires tracking both the outgoing and incoming tracks — fadingOutTrack is cleaned up after the fade duration plus a small buffer
+  - Track definitions are pure data (TrackLayer + NoteEvent arrays) — adding new tracks only requires writing a new build function, no engine changes
+  - createVolumeControl() now accepts an optional live MusicSystem parameter for real-time audio preview in the Options menu
+  - exponentialRampToValueAtTime(0.001) is used for note release — cannot ramp to exactly 0
 ---

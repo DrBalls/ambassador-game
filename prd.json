@@ -584,7 +584,7 @@
         "Verify in browser: music plays and changes appropriately between rooms"
       ],
       "priority": 33,
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]
